@@ -32,6 +32,7 @@ type PRListModel struct {
 	loading     bool
 	width       int
 	height      int
+	focused     bool
 }
 
 func NewPRListModel() PRListModel {
@@ -137,24 +138,24 @@ func (m *PRListModel) SetSize(w, h int) {
 	m.updateTableRows()
 }
 
-func (m *PRListModel) computeColumns(w int) []table.Column {
-	// Fixed columns: #(6) Author(15) State(8) Review(10) Checks(10) Updated(12) = 61
-	// Plus separators between columns accounted for by the table.
-	const fixedWidth = 61
+// cellPadding is the horizontal padding the bubbles table adds per column (1 left + 1 right).
+const cellPadding = 2
 
-	// For very narrow terminals, hide columns progressively
+func (m *PRListModel) computeColumns(w int) []table.Column {
+	// For very narrow terminals, hide columns progressively.
+	// Each column costs its width + cellPadding.
 	switch {
 	case w < 60:
-		// Only show #, Title, State
-		titleW := max(w-6-8, 10)
+		// Only show #, Title, State (3 columns)
+		titleW := max(w-6-8-3*cellPadding, 10)
 		return []table.Column{
 			{Title: "#", Width: 6},
 			{Title: "Title", Width: titleW},
 			{Title: "State", Width: 8},
 		}
-	case w < 80:
-		// Show #, Title, Author, State, Updated
-		titleW := max(w-6-15-8-12, 10)
+	case w < 100:
+		// Show #, Title, Author, State, Updated (5 columns)
+		titleW := max(w-6-15-8-12-5*cellPadding, 10)
 		return []table.Column{
 			{Title: "#", Width: 6},
 			{Title: "Title", Width: titleW},
@@ -163,8 +164,8 @@ func (m *PRListModel) computeColumns(w int) []table.Column {
 			{Title: "Updated", Width: 12},
 		}
 	default:
-		// Show all columns, Title gets the remaining space
-		titleW := max(w-fixedWidth, 10)
+		// Show all columns (7 columns), Title gets the remaining space
+		titleW := max(w-6-15-8-10-10-12-7*cellPadding, 10)
 		return []table.Column{
 			{Title: "#", Width: 6},
 			{Title: "Title", Width: titleW},
@@ -222,13 +223,13 @@ func (m *PRListModel) updateTableRows() {
 		case 3:
 			row = table.Row{
 				fmt.Sprintf("#%d", pr.Number),
-				truncate(pr.Title, 50),
+				pr.Title,
 				state,
 			}
 		case 5:
 			row = table.Row{
 				fmt.Sprintf("#%d", pr.Number),
-				truncate(pr.Title, 50),
+				pr.Title,
 				pr.Author,
 				state,
 				pr.UpdatedAt.Format("Jan 02 15:04"),
@@ -236,7 +237,7 @@ func (m *PRListModel) updateTableRows() {
 		default:
 			row = table.Row{
 				fmt.Sprintf("#%d", pr.Number),
-				truncate(pr.Title, 50),
+				pr.Title,
 				pr.Author,
 				state,
 				review,
@@ -295,12 +296,23 @@ func (m *PRListModel) SelectedPR() *gh.PR {
 	return nil
 }
 
+func (m *PRListModel) SetFocused(focused bool) {
+	m.focused = focused
+	m.table.Focus()
+	if !focused {
+		m.table.Blur()
+	}
+}
+
 func (m *PRListModel) View() string {
 	var b strings.Builder
 
-	title := titleStyle.Render("GitHub PRs")
 	filterInfo := m.filterLabel()
-	b.WriteString(title + "  " + statusBarStyle.Render(filterInfo))
+	if m.focused {
+		b.WriteString(titleStyle.Render("GitHub PRs") + "  " + statusBarStyle.Render(filterInfo))
+	} else {
+		b.WriteString(dimTextStyle.Render("  PRs") + "  " + statusBarStyle.Render(filterInfo))
+	}
 	b.WriteString("\n")
 
 	if m.loading {
@@ -334,11 +346,4 @@ func (m *PRListModel) filterLabel() string {
 	default:
 		return "[all]"
 	}
-}
-
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen-1] + "…"
 }
