@@ -42,6 +42,10 @@ type PRDetailModel struct {
 	checksLoaded   bool
 	commentsLoaded bool
 	filesLoaded    bool
+
+	// Files tab navigation
+	selectedFile int
+	viewingDiff  bool
 }
 
 func NewPRDetailModel() PRDetailModel {
@@ -68,6 +72,42 @@ func (m *PRDetailModel) Update(msg tea.Msg) (PRDetailModel, tea.Cmd) {
 				return *m, nil
 			}
 			return *m, nil
+		}
+
+		// When viewing a file diff, esc goes back to file list
+		if m.viewingDiff {
+			switch msg.String() {
+			case "esc":
+				m.viewingDiff = false
+				m.updateViewport()
+				return *m, nil
+			default:
+				var cmd tea.Cmd
+				m.viewport, cmd = m.viewport.Update(msg)
+				return *m, cmd
+			}
+		}
+
+		// Files tab navigation
+		if m.tab == TabFiles && m.filesLoaded && len(m.files) > 0 {
+			switch msg.String() {
+			case "up", "k":
+				if m.selectedFile > 0 {
+					m.selectedFile--
+					m.updateViewport()
+				}
+				return *m, nil
+			case "down", "j":
+				if m.selectedFile < len(m.files)-1 {
+					m.selectedFile++
+					m.updateViewport()
+				}
+				return *m, nil
+			case "enter":
+				m.viewingDiff = true
+				m.updateViewport()
+				return *m, nil
+			}
 		}
 
 		switch msg.String() {
@@ -160,6 +200,20 @@ func (m *PRDetailModel) isMergeable() bool {
 }
 
 func (m *PRDetailModel) helpKeys() string {
+	if m.viewingDiff {
+		return "esc:back to files"
+	}
+	if m.tab == TabFiles && m.filesLoaded && len(m.files) > 0 {
+		keys := "↑↓:navigate enter:view diff tab:switch"
+		if !m.isOwnPR() {
+			keys += " L:LGTM"
+		}
+		if m.isMergeable() {
+			keys += " M:merge"
+		}
+		keys += " esc:back"
+		return keys
+	}
 	keys := "tab:switch"
 	if !m.isOwnPR() {
 		keys += " L:LGTM"
@@ -226,6 +280,43 @@ func (m *PRDetailModel) View() string {
 	return b.String()
 }
 
+func (m *PRDetailModel) renderDiff() string {
+	if m.selectedFile < 0 || m.selectedFile >= len(m.files) {
+		return ""
+	}
+
+	f := m.files[m.selectedFile]
+	var b strings.Builder
+
+	// File header
+	b.WriteString(sectionTitleStyle.Render("  " + f.Filename))
+	b.WriteString("\n")
+	adds := additionsStyle.Render(fmt.Sprintf("+%d", f.Additions))
+	dels := deletionsStyle.Render(fmt.Sprintf("-%d", f.Deletions))
+	fmt.Fprintf(&b, "  %s %s\n\n", adds, dels)
+
+	if f.Patch == "" {
+		b.WriteString(dimTextStyle.Render("  (binary file or no diff available)"))
+		return b.String()
+	}
+
+	for line := range strings.SplitSeq(f.Patch, "\n") {
+		switch {
+		case strings.HasPrefix(line, "+"):
+			b.WriteString(diffAddStyle.Render("  " + line))
+		case strings.HasPrefix(line, "-"):
+			b.WriteString(diffDelStyle.Render("  " + line))
+		case strings.HasPrefix(line, "@@"):
+			b.WriteString(diffHunkStyle.Render("  " + line))
+		default:
+			b.WriteString("  " + line)
+		}
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
 func (m *PRDetailModel) renderTabContent() string {
 	if m.pr == nil {
 		return ""
@@ -239,6 +330,9 @@ func (m *PRDetailModel) renderTabContent() string {
 	case TabComments:
 		return m.renderComments()
 	case TabFiles:
+		if m.viewingDiff {
+			return m.renderDiff()
+		}
 		return m.renderFiles()
 	default:
 		return ""
@@ -460,7 +554,7 @@ func (m *PRDetailModel) renderFiles() string {
 		}
 	}
 
-	for _, f := range m.files {
+	for i, f := range m.files {
 		total := f.Additions + f.Deletions
 		barLen := maxBarLen
 		if maxChanges > 0 {
@@ -481,7 +575,12 @@ func (m *PRDetailModel) renderFiles() string {
 
 		adds := additionsStyle.Render(fmt.Sprintf("%+4d", f.Additions))
 		dels := deletionsStyle.Render(fmt.Sprintf("%+4d", -f.Deletions))
-		fmt.Fprintf(&b, "  %s %s %s %s\n", adds, dels, bar, f.Filename)
+
+		cursor := "  "
+		if i == m.selectedFile {
+			cursor = "▶ "
+		}
+		fmt.Fprintf(&b, "%s%s %s %s %s\n", cursor, adds, dels, bar, f.Filename)
 	}
 	return b.String()
 }

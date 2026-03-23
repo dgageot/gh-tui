@@ -44,6 +44,7 @@ type ChangedFile struct {
 	Status    string
 	Additions int
 	Deletions int
+	Patch     string
 }
 
 // ListPRs returns open pull requests for the repo.
@@ -178,6 +179,7 @@ func (c *Client) GetChangedFiles(ctx context.Context, number int) ([]ChangedFile
 			Status:    f.GetStatus(),
 			Additions: f.GetAdditions(),
 			Deletions: f.GetDeletions(),
+			Patch:     f.GetPatch(),
 		})
 	}
 	return result, nil

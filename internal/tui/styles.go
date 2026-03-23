@@ -87,6 +87,11 @@ var (
 	mergeableYesStyle     = lipgloss.NewStyle().Foreground(successColor)
 	mergeableNoStyle      = lipgloss.NewStyle().Foreground(failureColor)
 
+	// Diff
+	diffAddStyle  = lipgloss.NewStyle().Foreground(successColor)
+	diffDelStyle  = lipgloss.NewStyle().Foreground(failureColor)
+	diffHunkStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6CB6FF")).Bold(true)
+
 	// Confirm dialog
 	confirmStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).

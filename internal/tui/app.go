@@ -183,6 +183,11 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case ScreenDetail:
 			switch msg.String() {
 			case "esc":
+				if m.detail.viewingDiff {
+					var cmd tea.Cmd
+					m.detail, cmd = m.detail.Update(msg)
+					return m, cmd
+				}
 				m.screen = ScreenList
 				m.currentPR = nil
 				return m, nil
