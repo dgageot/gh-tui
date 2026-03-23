@@ -156,6 +156,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.currentPR = pr
 					m.screen = ScreenDetail
 					m.detail = NewPRDetailModel()
+					m.detail.currentUser = m.currentUser
 					m.detail.SetSize(m.width, m.height)
 					return m, m.loadDetail(pr.Number, pr.HeadRef)
 				}
@@ -168,6 +169,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.detail.confirm = "merge"
 					m.screen = ScreenDetail
 					m.detail = NewPRDetailModel()
+					m.detail.currentUser = m.currentUser
 					m.detail.SetSize(m.width, m.height)
 					m.detail.confirm = "merge"
 					return m, m.loadDetail(pr.Number, pr.HeadRef)

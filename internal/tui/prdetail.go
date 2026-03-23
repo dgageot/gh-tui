@@ -25,16 +25,17 @@ var tabNames = []string{"Overview", "Checks", "Comments", "Files"}
 
 // PRDetailModel is the PR detail screen.
 type PRDetailModel struct {
-	pr       *gh.PR
-	checks   []gh.Check
-	comments []gh.Comment
-	files    []gh.ChangedFile
-	tab      DetailTab
-	viewport viewport.Model
-	confirm  string // "merge" or "lgtm" or ""
-	err      error
-	width    int
-	height   int
+	pr          *gh.PR
+	checks      []gh.Check
+	comments    []gh.Comment
+	files       []gh.ChangedFile
+	tab         DetailTab
+	viewport    viewport.Model
+	confirm     string // "merge" or "lgtm" or ""
+	err         error
+	width       int
+	height      int
+	currentUser string
 
 	// Per-section loading state
 	prLoaded       bool
@@ -82,6 +83,9 @@ func (m *PRDetailModel) Update(msg tea.Msg) (PRDetailModel, tea.Cmd) {
 			m.confirm = "merge"
 			return *m, nil
 		case "L":
+			if m.isOwnPR() {
+				return *m, nil
+			}
 			m.confirm = "lgtm"
 			return *m, nil
 		}
@@ -144,6 +148,10 @@ func (m *PRDetailModel) updateViewport() {
 	m.viewport.GotoTop()
 }
 
+func (m *PRDetailModel) isOwnPR() bool {
+	return m.pr != nil && m.currentUser != "" && m.pr.Author == m.currentUser
+}
+
 func (m *PRDetailModel) loading() bool {
 	return !m.prLoaded && m.err == nil
 }
@@ -186,10 +194,13 @@ func (m *PRDetailModel) View() string {
 	b.WriteString("\n")
 
 	// Confirm dialog or help
-	if m.confirm != "" {
+	switch {
+	case m.confirm != "":
 		prompt := fmt.Sprintf("Confirm %s? (y/n)", m.confirm)
 		b.WriteString(confirmStyle.Render(prompt))
-	} else {
+	case m.isOwnPR():
+		b.WriteString(statusBarStyle.Render("tab:switch M:merge esc:back"))
+	default:
 		b.WriteString(statusBarStyle.Render("tab:switch L:LGTM M:merge esc:back"))
 	}
 
