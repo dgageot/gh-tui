@@ -80,12 +80,12 @@ func (m *IssueDetailModel) View() string {
 	var b strings.Builder
 
 	if m.loading() {
-		b.WriteString(loadingStyle.Render("Loading issue details..."))
+		b.WriteString(loadingStyle.Render("  Loading issue details…"))
 		return b.String()
 	}
 
 	if m.err != nil {
-		b.WriteString(errorStyle.Render("Error: " + m.err.Error()))
+		b.WriteString(errorStyle.Render("  Error: " + m.err.Error()))
 		return b.String()
 	}
 
@@ -93,11 +93,11 @@ func (m *IssueDetailModel) View() string {
 		return ""
 	}
 
-	b.WriteString(titleStyle.Render(fmt.Sprintf("#%d %s", m.issue.Number, m.issue.Title)))
+	b.WriteString(" " + titleStyle.Render(fmt.Sprintf(" #%d", m.issue.Number)) + "  " + titleStyle.Render(m.issue.Title))
 	b.WriteString("\n")
 	b.WriteString(m.viewport.View())
 	b.WriteString("\n")
-	b.WriteString(statusBarStyle.Render("esc:back q:quit"))
+	b.WriteString(formatHelpKeys("esc", "back", "q", "quit"))
 
 	return b.String()
 }
@@ -109,16 +109,21 @@ func (m *IssueDetailModel) renderContent() string {
 
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "  %-12s %s\n", dimTextStyle.Render("State"), m.issue.State)
-	fmt.Fprintf(&b, "  %-12s %s\n", dimTextStyle.Render("Author"), m.issue.Author)
-	fmt.Fprintf(&b, "  %-12s %s\n", dimTextStyle.Render("Updated"), m.issue.UpdatedAt.Format("Jan 02, 2006 15:04"))
+	b.WriteString("\n")
+
+	// State badge
+	badge := stateBadge(m.issue.State, false)
+	b.WriteString("  " + badge + "\n\n")
+
+	fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Author"), commentAuthorStyle.Render(m.issue.Author))
+	fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Updated"), m.issue.UpdatedAt.Format("Jan 02, 2006 15:04"))
 
 	if len(m.issue.Labels) > 0 {
 		var labels []string
 		for _, l := range m.issue.Labels {
 			labels = append(labels, labelStyle.Render(l))
 		}
-		fmt.Fprintf(&b, "  %-12s %s\n", dimTextStyle.Render("Labels"), strings.Join(labels, " "))
+		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Labels"), strings.Join(labels, " "))
 	}
 
 	b.WriteString("\n")
@@ -127,18 +132,18 @@ func (m *IssueDetailModel) renderContent() string {
 	if m.issue.Body != "" {
 		b.WriteString(bodyStyle.Render(m.issue.Body))
 	} else {
-		b.WriteString(bodyStyle.Render(dimTextStyle.Render("(no description)")))
+		b.WriteString(bodyStyle.Render(dimTextStyle.Render("No description provided.")))
 	}
 
 	// Comments
 	switch {
 	case m.commentsLoaded && len(m.comments) > 0:
 		b.WriteString("\n")
-		b.WriteString(sectionTitleStyle.Render(fmt.Sprintf("  Comments (%d)", len(m.comments))))
+		b.WriteString(sectionTitleStyle.Render(fmt.Sprintf("  💬 Comments (%d)", len(m.comments))))
 		b.WriteString("\n")
 		for i, c := range m.comments {
 			if i > 0 {
-				b.WriteString(commentSeparatorStyle.Render("  " + strings.Repeat("─", 60)))
+				b.WriteString(commentSeparatorStyle.Render("  " + strings.Repeat("─", min(60, m.width-4))))
 				b.WriteString("\n")
 			}
 			author := commentAuthorStyle.Render(c.Author)
@@ -151,10 +156,10 @@ func (m *IssueDetailModel) renderContent() string {
 		}
 	case m.commentsLoaded:
 		b.WriteString("\n")
-		b.WriteString(bodyStyle.Render(dimTextStyle.Render("No comments.")))
+		b.WriteString(bodyStyle.Render(dimTextStyle.Render("No comments yet.")))
 	default:
 		b.WriteString("\n")
-		b.WriteString(loadingStyle.Render("Loading comments..."))
+		b.WriteString(loadingStyle.Render("  Loading comments…"))
 	}
 
 	return b.String()

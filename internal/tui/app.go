@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	gh "github.com/dgageot/gh-tui/internal/github"
 )
@@ -374,10 +373,6 @@ func (m AppModel) openSelectedIssue() (tea.Model, tea.Cmd) {
 	m.issueDetail.SetSize(m.width, m.height)
 	return m, m.loadIssueDetail(issue.Number)
 }
-
-var separatorStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("240")).
-	Bold(true)
 
 func (m AppModel) View() string {
 	var view string

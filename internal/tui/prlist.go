@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	gh "github.com/dgageot/gh-tui/internal/github"
 )
@@ -52,11 +51,7 @@ func NewPRListModel() PRListModel {
 	)
 
 	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(true)
+	s.Header = tableHeaderStyle
 	s.Selected = selectedRowStyle
 	t.SetStyles(s)
 
@@ -142,11 +137,8 @@ func (m *PRListModel) SetSize(w, h int) {
 const cellPadding = 2
 
 func (m *PRListModel) computeColumns(w int) []table.Column {
-	// For very narrow terminals, hide columns progressively.
-	// Each column costs its width + cellPadding.
 	switch {
 	case w < 60:
-		// Only show #, Title, State (3 columns)
 		titleW := max(w-6-8-3*cellPadding, 10)
 		return []table.Column{
 			{Title: "#", Width: 6},
@@ -154,7 +146,6 @@ func (m *PRListModel) computeColumns(w int) []table.Column {
 			{Title: "State", Width: 8},
 		}
 	case w < 100:
-		// Show #, Title, Author, State, Updated (5 columns)
 		titleW := max(w-6-15-8-12-5*cellPadding, 10)
 		return []table.Column{
 			{Title: "#", Width: 6},
@@ -164,7 +155,6 @@ func (m *PRListModel) computeColumns(w int) []table.Column {
 			{Title: "Updated", Width: 12},
 		}
 	default:
-		// Show all columns (7 columns), Title gets the remaining space
 		titleW := max(w-6-15-8-10-10-12-7*cellPadding, 10)
 		return []table.Column{
 			{Title: "#", Width: 6},
@@ -259,7 +249,6 @@ func (m *PRListModel) filteredPRs() []gh.PR {
 				continue
 			}
 		case FilterReviewRequested:
-			// For simplicity, show all non-authored PRs as "review requested"
 			if pr.Author == m.currentUser {
 				continue
 			}
@@ -307,21 +296,18 @@ func (m *PRListModel) SetFocused(focused bool) {
 func (m *PRListModel) View() string {
 	var b strings.Builder
 
-	filterInfo := m.filterLabel()
-	if m.focused {
-		b.WriteString(titleStyle.Render("GitHub PRs") + "  " + statusBarStyle.Render(filterInfo))
-	} else {
-		b.WriteString(dimTextStyle.Render("  PRs") + "  " + statusBarStyle.Render(filterInfo))
-	}
+	// Title bar with filter pill
+	filterPill := m.filterPill()
+	b.WriteString(paneTitleBar("  Pull Requests", m.focused, m.width, filterPill))
 	b.WriteString("\n")
 
 	if m.loading {
-		b.WriteString(loadingStyle.Render("Loading pull requests..."))
+		b.WriteString(loadingStyle.Render("  Loading pull requests…"))
 		return b.String()
 	}
 
 	if m.err != nil {
-		b.WriteString(errorStyle.Render("Error: " + m.err.Error()))
+		b.WriteString(errorStyle.Render("  Error: " + m.err.Error()))
 		return b.String()
 	}
 
@@ -329,21 +315,26 @@ func (m *PRListModel) View() string {
 	b.WriteString("\n")
 
 	if m.searching {
-		b.WriteString(statusBarStyle.Render(fmt.Sprintf("Search: %s█", m.searchQuery)))
+		b.WriteString(helpKeyStyle.Render(fmt.Sprintf("  🔍 %s█", m.searchQuery)))
 	} else {
-		b.WriteString(statusBarStyle.Render("a:all m:mine r:review /:search R:refresh enter:open M:merge q:quit"))
+		b.WriteString(formatHelpKeys(
+			"a", "all", "m", "mine", "r", "review", "/", "search",
+			"R", "refresh", "⏎", "open", "M", "merge", "q", "quit",
+		))
 	}
 
 	return b.String()
 }
 
-func (m *PRListModel) filterLabel() string {
+func (m *PRListModel) filterPill() string {
+	var label string
 	switch m.filter {
 	case FilterMine:
-		return "[mine]"
+		label = "mine"
 	case FilterReviewRequested:
-		return "[review requested]"
+		label = "review requested"
 	default:
-		return "[all]"
+		label = "all"
 	}
+	return dimTextStyle.Render("⟨") + statusBarStyle.Render(label) + dimTextStyle.Render("⟩")
 }

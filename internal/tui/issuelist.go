@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	gh "github.com/dgageot/gh-tui/internal/github"
 )
@@ -38,11 +37,7 @@ func NewIssueListModel() IssueListModel {
 	)
 
 	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(true)
+	s.Header = tableHeaderStyle
 	s.Selected = selectedRowStyle
 	t.SetStyles(s)
 
@@ -91,8 +86,6 @@ func (m *IssueListModel) SetSize(w, h int) {
 }
 
 func (m *IssueListModel) computeColumns(w int) []table.Column {
-	// 5 columns: #(6) + Title + Author(15) + 💬(3) + Updated(12)
-	// Each column costs its width + cellPadding.
 	titleW := max(w-6-15-3-12-5*cellPadding, 10)
 	return []table.Column{
 		{Title: "#", Width: 6},
@@ -149,21 +142,16 @@ func (m *IssueListModel) SelectedIssue() *gh.Issue {
 func (m *IssueListModel) View() string {
 	var b strings.Builder
 
-	title := "Issues"
-	if m.focused {
-		b.WriteString(titleStyle.Render("GitHub " + title))
-	} else {
-		b.WriteString(dimTextStyle.Render("  " + title))
-	}
+	b.WriteString(paneTitleBar("  Issues", m.focused, m.width, ""))
 	b.WriteString("\n")
 
 	if m.loading {
-		b.WriteString(loadingStyle.Render("Loading issues..."))
+		b.WriteString(loadingStyle.Render("  Loading issues…"))
 		return b.String()
 	}
 
 	if m.err != nil {
-		b.WriteString(errorStyle.Render("Error: " + m.err.Error()))
+		b.WriteString(errorStyle.Render("  Error: " + m.err.Error()))
 		return b.String()
 	}
 

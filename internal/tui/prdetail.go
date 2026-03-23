@@ -37,13 +37,11 @@ type PRDetailModel struct {
 	height      int
 	currentUser string
 
-	// Per-section loading state
 	prLoaded       bool
 	checksLoaded   bool
 	commentsLoaded bool
 	filesLoaded    bool
 
-	// Files tab navigation
 	selectedFile int
 	viewingDiff  bool
 }
@@ -90,7 +88,6 @@ func (m *PRDetailModel) Update(msg tea.Msg) (PRDetailModel, tea.Cmd) {
 			return *m, nil
 		}
 
-		// When viewing a file diff, esc goes back to file list
 		if m.viewingDiff {
 			switch msg.String() {
 			case "esc":
@@ -104,7 +101,6 @@ func (m *PRDetailModel) Update(msg tea.Msg) (PRDetailModel, tea.Cmd) {
 			}
 		}
 
-		// Files tab navigation
 		if m.tab == TabFiles && m.filesLoaded && len(m.files) > 0 {
 			switch msg.String() {
 			case "up", "k":
@@ -216,51 +212,41 @@ func (m *PRDetailModel) isMergeable() bool {
 	return m.pr != nil && m.pr.Mergeable
 }
 
-func (m *PRDetailModel) helpKeys() string {
+func (m *PRDetailModel) helpBar() string {
 	if m.viewingDiff {
-		return "esc:back to files"
+		return formatHelpKeys("esc", "back to files")
 	}
+	pairs := []string{"⇥", "switch tab"}
 	if m.tab == TabFiles && m.filesLoaded && len(m.files) > 0 {
-		keys := "↑↓:navigate enter:view diff tab:switch"
-		if !m.isOwnPR() {
-			keys += " L:LGTM"
-		}
-		if m.isMergeable() {
-			keys += " M:merge"
-		}
-		keys += " esc:back"
-		return keys
+		pairs = append(pairs, "↑↓", "navigate", "⏎", "view diff")
 	}
-	keys := "tab:switch"
 	if !m.isOwnPR() {
-		keys += " L:LGTM"
+		pairs = append(pairs, "L", "LGTM")
 	}
 	if m.isMergeable() {
-		keys += " M:merge"
+		pairs = append(pairs, "M", "merge")
 	}
-	keys += " esc:back"
-	return keys
+	pairs = append(pairs, "esc", "back")
+	return formatHelpKeys(pairs...)
 }
 
 func (m *PRDetailModel) loading() bool {
 	return !m.prLoaded && m.err == nil
 }
 
-// tabAtPosition returns the tab at the given mouse position, if any.
-// Tabs are on row 1 (below the title on row 0).
 func (m *PRDetailModel) tabAtPosition(x, y int) (DetailTab, bool) {
 	if y != 1 {
 		return 0, false
 	}
 
-	const tabPadding = 2 // padding on each side
+	const tabPadding = 2
 	pos := 0
 	for i, name := range tabNames {
 		tabWidth := len(name) + tabPadding*2
 		if x >= pos && x < pos+tabWidth {
 			return DetailTab(i), true
 		}
-		pos += tabWidth + 1 // +1 for the space separator
+		pos += tabWidth + 1
 	}
 	return 0, false
 }
@@ -269,12 +255,12 @@ func (m *PRDetailModel) View() string {
 	var b strings.Builder
 
 	if m.loading() {
-		b.WriteString(loadingStyle.Render("Loading PR details..."))
+		b.WriteString(loadingStyle.Render("  Loading PR details…"))
 		return b.String()
 	}
 
 	if m.err != nil {
-		b.WriteString(errorStyle.Render("Error: " + m.err.Error()))
+		b.WriteString(errorStyle.Render("  Error: " + m.err.Error()))
 		return b.String()
 	}
 
@@ -282,11 +268,11 @@ func (m *PRDetailModel) View() string {
 		return ""
 	}
 
-	// Title
-	b.WriteString(titleStyle.Render(fmt.Sprintf("#%d %s", m.pr.Number, m.pr.Title)))
+	// Title with number
+	b.WriteString(" " + titleStyle.Render(fmt.Sprintf(" #%d", m.pr.Number)) + "  " + titleStyle.Render(m.pr.Title))
 	b.WriteString("\n")
 
-	// Tabs
+	// Tab bar
 	var tabs []string
 	for i, name := range tabNames {
 		if DetailTab(i) == m.tab {
@@ -303,14 +289,11 @@ func (m *PRDetailModel) View() string {
 	b.WriteString("\n")
 
 	// Confirm dialog or help
-	switch {
-	case m.confirm != "":
-		prompt := fmt.Sprintf("Confirm %s? (y/n)", m.confirm)
+	if m.confirm != "" {
+		prompt := fmt.Sprintf("  Confirm %s? (y/n)", m.confirm)
 		b.WriteString(confirmStyle.Render(prompt))
-	case m.isOwnPR():
-		b.WriteString(statusBarStyle.Render(m.helpKeys()))
-	default:
-		b.WriteString(statusBarStyle.Render(m.helpKeys()))
+	} else {
+		b.WriteString(m.helpBar())
 	}
 
 	return b.String()
@@ -324,8 +307,7 @@ func (m *PRDetailModel) renderDiff() string {
 	f := m.files[m.selectedFile]
 	var b strings.Builder
 
-	// File header
-	b.WriteString(sectionTitleStyle.Render("  " + f.Filename))
+	b.WriteString(sectionTitleStyle.Render("  📄 " + f.Filename))
 	b.WriteString("\n")
 	adds := additionsStyle.Render(fmt.Sprintf("+%d", f.Additions))
 	dels := deletionsStyle.Render(fmt.Sprintf("-%d", f.Deletions))
@@ -343,6 +325,7 @@ func (m *PRDetailModel) renderDiff() string {
 		case strings.HasPrefix(line, "-"):
 			b.WriteString(diffDelStyle.Render("  " + line))
 		case strings.HasPrefix(line, "@@"):
+			b.WriteString("\n")
 			b.WriteString(diffHunkStyle.Render("  " + line))
 		default:
 			b.WriteString("  " + line)
@@ -378,36 +361,32 @@ func (m *PRDetailModel) renderTabContent() string {
 func (m *PRDetailModel) renderOverview() string {
 	var b strings.Builder
 
-	// State and branch
-	state := m.pr.State
-	if m.pr.Draft {
-		state = "draft"
-	}
-	fmt.Fprintf(&b, "  %-12s %s\n", dimTextStyle.Render("State"), state)
-	fmt.Fprintf(&b, "  %-12s %s\n", dimTextStyle.Render("Author"), m.pr.Author)
-	fmt.Fprintf(&b, "  %-12s %s\n", dimTextStyle.Render("Branch"), branchStyle.Render(m.pr.HeadRef))
-	fmt.Fprintf(&b, "  %-12s %s\n", dimTextStyle.Render("Updated"), m.pr.UpdatedAt.Format("Jan 02, 2006 15:04"))
+	b.WriteString("\n")
+
+	// State badge + branch
+	badge := stateBadge(m.pr.State, m.pr.Draft)
+	fmt.Fprintf(&b, "  %s  %s → main\n\n", badge, branchStyle.Render(m.pr.HeadRef))
+
+	// Info grid
+	fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Author"), commentAuthorStyle.Render(m.pr.Author))
+	fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Updated"), m.pr.UpdatedAt.Format("Jan 02, 2006 15:04"))
 
 	// Mergeable
-	var mergeText string
 	if m.pr.Mergeable {
-		mergeText = mergeableYesStyle.Render("✓ Yes")
+		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Mergeable"), mergeableYesStyle.Render("✓ Yes"))
 	} else {
-		mergeText = mergeableNoStyle.Render("✗ No")
+		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Mergeable"), mergeableNoStyle.Render("✗ No"))
 	}
-	fmt.Fprintf(&b, "  %-12s %s\n", dimTextStyle.Render("Mergeable"), mergeText)
 
-	// Review decision
-	var reviewText string
+	// Review
 	switch m.pr.ReviewDecision {
 	case "APPROVED":
-		reviewText = reviewApprovedStyle.Render("✓ Approved")
+		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Review"), reviewApprovedStyle.Render("✓ Approved"))
 	case "CHANGES_REQUESTED":
-		reviewText = reviewChangesStyle.Render("✗ Changes requested")
+		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Review"), reviewChangesStyle.Render("✗ Changes requested"))
 	default:
-		reviewText = reviewPendingStyle.Render("Pending")
+		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Review"), reviewPendingStyle.Render("⏳ Pending"))
 	}
-	fmt.Fprintf(&b, "  %-12s %s\n", dimTextStyle.Render("Review"), reviewText)
 
 	// Labels
 	if len(m.pr.Labels) > 0 {
@@ -415,10 +394,10 @@ func (m *PRDetailModel) renderOverview() string {
 		for _, l := range m.pr.Labels {
 			labels = append(labels, labelStyle.Render(l))
 		}
-		fmt.Fprintf(&b, "  %-12s %s\n", dimTextStyle.Render("Labels"), strings.Join(labels, " "))
+		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Labels"), strings.Join(labels, " "))
 	}
 
-	// Checks summary
+	// Checks summary inline
 	if m.checksLoaded && len(m.checks) > 0 {
 		pass, fail, pending := 0, 0, 0
 		for _, c := range m.checks {
@@ -440,7 +419,7 @@ func (m *PRDetailModel) renderOverview() string {
 		default:
 			checksText = checkPassStyle.Render(fmt.Sprintf("%d/%d passing", pass, len(m.checks)))
 		}
-		fmt.Fprintf(&b, "  %-12s %s\n", dimTextStyle.Render("Checks"), checksText)
+		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Checks"), checksText)
 	}
 
 	// Description
@@ -450,7 +429,7 @@ func (m *PRDetailModel) renderOverview() string {
 	if m.pr.Body != "" {
 		b.WriteString(bodyStyle.Render(m.pr.Body))
 	} else {
-		b.WriteString(bodyStyle.Render(dimTextStyle.Render("(no description)")))
+		b.WriteString(bodyStyle.Render(dimTextStyle.Render("No description provided.")))
 	}
 
 	return b.String()
@@ -458,15 +437,14 @@ func (m *PRDetailModel) renderOverview() string {
 
 func (m *PRDetailModel) renderChecks() string {
 	if !m.checksLoaded {
-		return loadingStyle.Render("Loading checks...")
+		return loadingStyle.Render("  Loading checks…")
 	}
 	if len(m.checks) == 0 {
-		return bodyStyle.Render("No checks found.")
+		return bodyStyle.Render(dimTextStyle.Render("No checks found."))
 	}
 
 	var b strings.Builder
 
-	// Summary
 	pass, fail, pending := 0, 0, 0
 	for _, c := range m.checks {
 		switch c.Conclusion {
@@ -478,25 +456,26 @@ func (m *PRDetailModel) renderChecks() string {
 			pending++
 		}
 	}
+
+	b.WriteString("\n")
 	fmt.Fprintf(&b, "  %d checks: ", len(m.checks))
 	if pass > 0 {
 		b.WriteString(checkPassStyle.Render(fmt.Sprintf("%d passed", pass)))
 	}
 	if fail > 0 {
 		if pass > 0 {
-			b.WriteString(", ")
+			b.WriteString(dimTextStyle.Render(", "))
 		}
 		b.WriteString(checkFailStyle.Render(fmt.Sprintf("%d failed", fail)))
 	}
 	if pending > 0 {
 		if pass > 0 || fail > 0 {
-			b.WriteString(", ")
+			b.WriteString(dimTextStyle.Render(", "))
 		}
 		b.WriteString(checkPendStyle.Render(fmt.Sprintf("%d pending", pending)))
 	}
 	b.WriteString("\n\n")
 
-	// Individual checks - failures first, then pending, then passed
 	type styledCheck struct {
 		icon  string
 		name  string
@@ -535,22 +514,22 @@ func (m *PRDetailModel) renderChecks() string {
 
 func (m *PRDetailModel) renderComments() string {
 	if !m.commentsLoaded {
-		return loadingStyle.Render("Loading comments...")
+		return loadingStyle.Render("  Loading comments…")
 	}
 	if len(m.comments) == 0 {
-		return bodyStyle.Render("No comments.")
+		return bodyStyle.Render(dimTextStyle.Render("No comments yet."))
 	}
 
 	var b strings.Builder
+	b.WriteString("\n")
 	for i, c := range m.comments {
 		if i > 0 {
-			b.WriteString(commentSeparatorStyle.Render("  " + strings.Repeat("─", 60)))
+			b.WriteString(commentSeparatorStyle.Render("  " + strings.Repeat("─", min(60, m.width-4))))
 			b.WriteString("\n")
 		}
 		author := commentAuthorStyle.Render(c.Author)
 		date := commentDateStyle.Render(c.CreatedAt.Format("Jan 02, 2006 15:04"))
 		fmt.Fprintf(&b, "  %s  %s\n", author, date)
-		// Indent the body
 		for line := range strings.SplitSeq(c.Body, "\n") {
 			fmt.Fprintf(&b, "  %s\n", line)
 		}
@@ -561,27 +540,27 @@ func (m *PRDetailModel) renderComments() string {
 
 func (m *PRDetailModel) renderFiles() string {
 	if !m.filesLoaded {
-		return loadingStyle.Render("Loading files...")
+		return loadingStyle.Render("  Loading files…")
 	}
 	if len(m.files) == 0 {
-		return bodyStyle.Render("No files changed.")
+		return bodyStyle.Render(dimTextStyle.Render("No files changed."))
 	}
 
 	var b strings.Builder
 
-	// Summary
 	totalAdds, totalDels := 0, 0
 	for _, f := range m.files {
 		totalAdds += f.Additions
 		totalDels += f.Deletions
 	}
-	fmt.Fprintf(&b, "  %d files changed, ", len(m.files))
+
+	b.WriteString("\n")
+	fmt.Fprintf(&b, "  %d files changed  ", len(m.files))
 	b.WriteString(additionsStyle.Render(fmt.Sprintf("+%d", totalAdds)))
-	b.WriteString(", ")
+	b.WriteString(dimTextStyle.Render(" / "))
 	b.WriteString(deletionsStyle.Render(fmt.Sprintf("-%d", totalDels)))
 	b.WriteString("\n\n")
 
-	// Files with diff bars
 	const maxBarLen = 20
 	maxChanges := 0
 	for _, f := range m.files {
@@ -606,15 +585,16 @@ func (m *PRDetailModel) renderFiles() string {
 			delBar = barLen - addBar
 		}
 
-		bar := fileBarAdditionsStyle.Render(strings.Repeat("+", addBar)) +
-			fileBarDeletionsStyle.Render(strings.Repeat("-", delBar))
+		bar := fileBarAdditionsStyle.Render(strings.Repeat("█", addBar)) +
+			fileBarDeletionsStyle.Render(strings.Repeat("█", delBar)) +
+			dimTextStyle.Render(strings.Repeat("░", maxBarLen-addBar-delBar))
 
 		adds := additionsStyle.Render(fmt.Sprintf("%+4d", f.Additions))
 		dels := deletionsStyle.Render(fmt.Sprintf("%+4d", -f.Deletions))
 
 		cursor := "  "
 		if i == m.selectedFile {
-			cursor = "▶ "
+			cursor = titleStyle.Render("▸ ")
 		}
 		fmt.Fprintf(&b, "%s%s %s %s %s\n", cursor, adds, dels, bar, f.Filename)
 	}
