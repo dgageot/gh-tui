@@ -10,17 +10,18 @@ import (
 
 // PR represents a pull request with relevant fields.
 type PR struct {
-	Number    int
-	Title     string
-	Author    string
-	State     string
-	Body      string
-	Labels    []string
-	Mergeable bool
-	Draft     bool
-	UpdatedAt time.Time
-	Checks    []Check
-	HeadRef   string
+	Number         int
+	Title          string
+	Author         string
+	State          string
+	Body           string
+	Labels         []string
+	Mergeable      bool
+	Draft          bool
+	UpdatedAt      time.Time
+	Checks         []Check
+	HeadRef        string
+	ReviewDecision string // APPROVED, CHANGES_REQUESTED, or empty
 }
 
 // Check represents a CI status check.
@@ -188,6 +189,35 @@ func (c *Client) MergePR(ctx context.Context, number int) error {
 		MergeMethod: "squash",
 	})
 	return err
+}
+
+// GetReviewDecision computes the review decision for a PR based on the latest review per reviewer.
+func (c *Client) GetReviewDecision(ctx context.Context, number int) (string, error) {
+	reviews, _, err := c.inner.PullRequests.ListReviews(ctx, c.Owner, c.Repo, number, &gh.ListOptions{PerPage: 100})
+	if err != nil {
+		return "", err
+	}
+
+	// Track the latest review state per user
+	latestByUser := map[string]string{}
+	for _, r := range reviews {
+		state := r.GetState()
+		if state == "APPROVED" || state == "CHANGES_REQUESTED" {
+			latestByUser[r.GetUser().GetLogin()] = state
+		}
+	}
+
+	if len(latestByUser) == 0 {
+		return "", nil
+	}
+
+	for _, state := range latestByUser {
+		if state == "CHANGES_REQUESTED" {
+			return "CHANGES_REQUESTED", nil
+		}
+	}
+
+	return "APPROVED", nil
 }
 
 // ApprovePR submits an approving review with "LGTM" body.

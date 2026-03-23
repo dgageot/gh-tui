@@ -64,6 +64,29 @@ var (
 	additionsStyle = lipgloss.NewStyle().Foreground(successColor)
 	deletionsStyle = lipgloss.NewStyle().Foreground(failureColor)
 
+	// Detail sections
+	sectionTitleStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(primaryColor).
+				MarginTop(1).
+				MarginBottom(1)
+
+	dimTextStyle = lipgloss.NewStyle().Foreground(dimColor)
+
+	branchStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Background(lipgloss.Color("#444444")).
+			Padding(0, 1)
+
+	reviewApprovedStyle   = lipgloss.NewStyle().Foreground(successColor).Bold(true)
+	reviewChangesStyle    = lipgloss.NewStyle().Foreground(failureColor).Bold(true)
+	reviewPendingStyle    = lipgloss.NewStyle().Foreground(warningColor)
+	commentSeparatorStyle = lipgloss.NewStyle().Foreground(dimColor)
+	fileBarAdditionsStyle = lipgloss.NewStyle().Foreground(successColor)
+	fileBarDeletionsStyle = lipgloss.NewStyle().Foreground(failureColor)
+	mergeableYesStyle     = lipgloss.NewStyle().Foreground(successColor)
+	mergeableNoStyle      = lipgloss.NewStyle().Foreground(failureColor)
+
 	// Confirm dialog
 	confirmStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).

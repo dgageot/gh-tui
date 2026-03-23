@@ -40,6 +40,7 @@ func NewPRListModel() PRListModel {
 		{Title: "Title", Width: 40},
 		{Title: "Author", Width: 15},
 		{Title: "State", Width: 8},
+		{Title: "Review", Width: 10},
 		{Title: "Checks", Width: 10},
 		{Title: "Updated", Width: 12},
 	}
@@ -124,7 +125,7 @@ func (m *PRListModel) SetSize(w, h int) {
 	// Adjust title column width
 	if w > 91 {
 		cols := m.table.Columns()
-		cols[1] = table.Column{Title: "Title", Width: w - 51 - 6}
+		cols[1] = table.Column{Title: "Title", Width: w - 61 - 6}
 		m.table.SetColumns(cols)
 	}
 }
@@ -160,11 +161,20 @@ func (m *PRListModel) updateTableRows() {
 			state = "draft"
 		}
 
+		review := "—"
+		switch pr.ReviewDecision {
+		case "APPROVED":
+			review = "✓ approved"
+		case "CHANGES_REQUESTED":
+			review = "✗ changes"
+		}
+
 		rows = append(rows, table.Row{
 			fmt.Sprintf("#%d", pr.Number),
 			truncate(pr.Title, 50),
 			pr.Author,
 			state,
+			review,
 			checks,
 			pr.UpdatedAt.Format("Jan 02 15:04"),
 		})

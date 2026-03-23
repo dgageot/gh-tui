@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -33,17 +34,15 @@ type prsLoadedMsg struct {
 
 type prsErrorMsg struct{ err error }
 
-type detailLoadedMsg struct {
-	pr       *gh.PR
-	checks   []gh.Check
-	comments []gh.Comment
-	files    []gh.ChangedFile
-}
-
 type (
-	detailErrorMsg struct{ err error }
-	mergeResultMsg struct{ err error }
-	lgtmResultMsg  struct{ err error }
+	detailPRMsg       struct{ pr *gh.PR }
+	detailChecksMsg   struct{ checks []gh.Check }
+	detailCommentsMsg struct{ comments []gh.Comment }
+	detailFilesMsg    struct{ files []gh.ChangedFile }
+	detailReviewMsg   struct{ decision string }
+	detailErrorMsg    struct{ err error }
+	mergeResultMsg    struct{ err error }
+	lgtmResultMsg     struct{ err error }
 )
 
 // AppModel is the root model.
@@ -90,8 +89,24 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetError(msg.err)
 		return m, nil
 
-	case detailLoadedMsg:
-		m.detail.SetData(msg.pr, msg.checks, msg.comments, msg.files)
+	case detailPRMsg:
+		m.detail.SetPR(msg.pr)
+		return m, nil
+
+	case detailChecksMsg:
+		m.detail.SetChecks(msg.checks)
+		return m, nil
+
+	case detailCommentsMsg:
+		m.detail.SetComments(msg.comments)
+		return m, nil
+
+	case detailFilesMsg:
+		m.detail.SetFiles(msg.files)
+		return m, nil
+
+	case detailReviewMsg:
+		m.detail.SetReviewDecision(msg.decision)
 		return m, nil
 
 	case detailErrorMsg:
@@ -224,30 +239,48 @@ func (m AppModel) loadPRs() tea.Cmd {
 			return prsErrorMsg{err: err}
 		}
 
+		// Fetch review decisions concurrently
+		var wg sync.WaitGroup
+		for i := range prs {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				decision, _ := m.client.GetReviewDecision(ctx, prs[i].Number)
+				prs[i].ReviewDecision = decision
+			}(i)
+		}
+		wg.Wait()
+
 		return prsLoadedMsg{prs: prs, user: user}
 	}
 }
 
 func (m AppModel) loadDetail(number int, ref string) tea.Cmd {
-	return func() tea.Msg {
-		ctx := context.Background()
-
-		pr, err := m.client.GetPRDetail(ctx, number)
-		if err != nil {
-			return detailErrorMsg{err: err}
-		}
-
-		checks, _ := m.client.GetChecks(ctx, ref)
-		comments, _ := m.client.GetComments(ctx, number)
-		files, _ := m.client.GetChangedFiles(ctx, number)
-
-		return detailLoadedMsg{
-			pr:       pr,
-			checks:   checks,
-			comments: comments,
-			files:    files,
-		}
-	}
+	return tea.Batch(
+		func() tea.Msg {
+			pr, err := m.client.GetPRDetail(context.Background(), number)
+			if err != nil {
+				return detailErrorMsg{err: err}
+			}
+			return detailPRMsg{pr: pr}
+		},
+		func() tea.Msg {
+			checks, _ := m.client.GetChecks(context.Background(), ref)
+			return detailChecksMsg{checks: checks}
+		},
+		func() tea.Msg {
+			comments, _ := m.client.GetComments(context.Background(), number)
+			return detailCommentsMsg{comments: comments}
+		},
+		func() tea.Msg {
+			files, _ := m.client.GetChangedFiles(context.Background(), number)
+			return detailFilesMsg{files: files}
+		},
+		func() tea.Msg {
+			decision, _ := m.client.GetReviewDecision(context.Background(), number)
+			return detailReviewMsg{decision: decision}
+		},
+	)
 }
 
 func (m AppModel) mergePR(number int) tea.Cmd {
