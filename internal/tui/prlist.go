@@ -131,14 +131,49 @@ func (m *PRListModel) Update(msg tea.Msg) (PRListModel, tea.Cmd) {
 func (m *PRListModel) SetSize(w, h int) {
 	m.width = w
 	m.height = h
-	// Reserve space for title, status bar, and filter line
 	m.table.SetWidth(w)
 	m.table.SetHeight(h - 4)
-	// Adjust title column width
-	if w > 91 {
-		cols := m.table.Columns()
-		cols[1] = table.Column{Title: "Title", Width: w - 61 - 6}
-		m.table.SetColumns(cols)
+	m.table.SetColumns(m.computeColumns(w))
+	m.updateTableRows()
+}
+
+func (m *PRListModel) computeColumns(w int) []table.Column {
+	// Fixed columns: #(6) Author(15) State(8) Review(10) Checks(10) Updated(12) = 61
+	// Plus separators between columns accounted for by the table.
+	const fixedWidth = 61
+
+	// For very narrow terminals, hide columns progressively
+	switch {
+	case w < 60:
+		// Only show #, Title, State
+		titleW := max(w-6-8, 10)
+		return []table.Column{
+			{Title: "#", Width: 6},
+			{Title: "Title", Width: titleW},
+			{Title: "State", Width: 8},
+		}
+	case w < 80:
+		// Show #, Title, Author, State, Updated
+		titleW := max(w-6-15-8-12, 10)
+		return []table.Column{
+			{Title: "#", Width: 6},
+			{Title: "Title", Width: titleW},
+			{Title: "Author", Width: 15},
+			{Title: "State", Width: 8},
+			{Title: "Updated", Width: 12},
+		}
+	default:
+		// Show all columns, Title gets the remaining space
+		titleW := max(w-fixedWidth, 10)
+		return []table.Column{
+			{Title: "#", Width: 6},
+			{Title: "Title", Width: titleW},
+			{Title: "Author", Width: 15},
+			{Title: "State", Width: 8},
+			{Title: "Review", Width: 10},
+			{Title: "Checks", Width: 10},
+			{Title: "Updated", Width: 12},
+		}
 	}
 }
 
@@ -155,6 +190,7 @@ func (m *PRListModel) SetError(err error) {
 }
 
 func (m *PRListModel) updateTableRows() {
+	numCols := len(m.table.Columns())
 	var rows []table.Row
 	for _, pr := range m.filteredPRs() {
 		checks := "—"
@@ -181,15 +217,34 @@ func (m *PRListModel) updateTableRows() {
 			review = "✗ changes"
 		}
 
-		rows = append(rows, table.Row{
-			fmt.Sprintf("#%d", pr.Number),
-			truncate(pr.Title, 50),
-			pr.Author,
-			state,
-			review,
-			checks,
-			pr.UpdatedAt.Format("Jan 02 15:04"),
-		})
+		var row table.Row
+		switch numCols {
+		case 3:
+			row = table.Row{
+				fmt.Sprintf("#%d", pr.Number),
+				truncate(pr.Title, 50),
+				state,
+			}
+		case 5:
+			row = table.Row{
+				fmt.Sprintf("#%d", pr.Number),
+				truncate(pr.Title, 50),
+				pr.Author,
+				state,
+				pr.UpdatedAt.Format("Jan 02 15:04"),
+			}
+		default:
+			row = table.Row{
+				fmt.Sprintf("#%d", pr.Number),
+				truncate(pr.Title, 50),
+				pr.Author,
+				state,
+				review,
+				checks,
+				pr.UpdatedAt.Format("Jan 02 15:04"),
+			}
+		}
+		rows = append(rows, row)
 	}
 	m.table.SetRows(rows)
 }
