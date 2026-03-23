@@ -57,7 +57,23 @@ func (m *PRDetailModel) Init() tea.Cmd {
 }
 
 func (m *PRDetailModel) Update(msg tea.Msg) (PRDetailModel, tea.Cmd) {
-	if msg, ok := msg.(tea.KeyMsg); ok {
+	switch msg := msg.(type) {
+	case tea.MouseMsg:
+		if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
+			if tab, ok := m.tabAtPosition(msg.X, msg.Y); ok {
+				m.tab = tab
+				if tab != TabFiles {
+					m.viewingDiff = false
+				}
+				m.updateViewport()
+				return *m, nil
+			}
+		}
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		return *m, cmd
+
+	case tea.KeyMsg:
 		if m.confirm != "" {
 			switch msg.String() {
 			case "y", "Y":
@@ -227,6 +243,25 @@ func (m *PRDetailModel) helpKeys() string {
 
 func (m *PRDetailModel) loading() bool {
 	return !m.prLoaded && m.err == nil
+}
+
+// tabAtPosition returns the tab at the given mouse position, if any.
+// Tabs are on row 1 (below the title on row 0).
+func (m *PRDetailModel) tabAtPosition(x, y int) (DetailTab, bool) {
+	if y != 1 {
+		return 0, false
+	}
+
+	const tabPadding = 2 // padding on each side
+	pos := 0
+	for i, name := range tabNames {
+		tabWidth := len(name) + tabPadding*2
+		if x >= pos && x < pos+tabWidth {
+			return DetailTab(i), true
+		}
+		pos += tabWidth + 1 // +1 for the space separator
+	}
+	return 0, false
 }
 
 func (m *PRDetailModel) View() string {
