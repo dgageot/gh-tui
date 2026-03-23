@@ -80,6 +80,9 @@ func (m *PRDetailModel) Update(msg tea.Msg) (PRDetailModel, tea.Cmd) {
 			m.updateViewport()
 			return *m, nil
 		case "M":
+			if m.pr != nil && !m.pr.Mergeable {
+				return *m, nil
+			}
 			m.confirm = "merge"
 			return *m, nil
 		case "L":
@@ -152,6 +155,22 @@ func (m *PRDetailModel) isOwnPR() bool {
 	return m.pr != nil && m.currentUser != "" && m.pr.Author == m.currentUser
 }
 
+func (m *PRDetailModel) isMergeable() bool {
+	return m.pr != nil && m.pr.Mergeable
+}
+
+func (m *PRDetailModel) helpKeys() string {
+	keys := "tab:switch"
+	if !m.isOwnPR() {
+		keys += " L:LGTM"
+	}
+	if m.isMergeable() {
+		keys += " M:merge"
+	}
+	keys += " esc:back"
+	return keys
+}
+
 func (m *PRDetailModel) loading() bool {
 	return !m.prLoaded && m.err == nil
 }
@@ -199,9 +218,9 @@ func (m *PRDetailModel) View() string {
 		prompt := fmt.Sprintf("Confirm %s? (y/n)", m.confirm)
 		b.WriteString(confirmStyle.Render(prompt))
 	case m.isOwnPR():
-		b.WriteString(statusBarStyle.Render("tab:switch M:merge esc:back"))
+		b.WriteString(statusBarStyle.Render(m.helpKeys()))
 	default:
-		b.WriteString(statusBarStyle.Render("tab:switch L:LGTM M:merge esc:back"))
+		b.WriteString(statusBarStyle.Render(m.helpKeys()))
 	}
 
 	return b.String()
