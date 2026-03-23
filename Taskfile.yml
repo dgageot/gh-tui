@@ -49,6 +49,16 @@ tasks:
       - golangci-lint run --fix
       - go mod tidy
 
+  install:
+    aliases: [i]
+    desc: Install the application binary
+    cmds:
+      - go build -o $(go env GOPATH)/bin/{{.BINARY_NAME}} ./cmd
+    sources:
+      - "{{.GO_SOURCES}}"
+      - "go.mod"
+      - "go.sum"
+
   test:
     aliases: [t]
     desc: Run tests
