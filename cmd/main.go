@@ -6,6 +6,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	gh "github.com/dgageot/gh-tui/internal/github"
 	"github.com/dgageot/gh-tui/internal/repo"
 	"github.com/dgageot/gh-tui/internal/tui"

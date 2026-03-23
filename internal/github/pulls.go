@@ -129,8 +129,8 @@ func (c *Client) GetChecks(ctx context.Context, ref string) ([]Check, error) {
 // GetComments fetches issue comments for a PR.
 func (c *Client) GetComments(ctx context.Context, number int) ([]Comment, error) {
 	comments, _, err := c.inner.Issues.ListComments(ctx, c.Owner, c.Repo, number, &gh.IssueListCommentsOptions{
-		Sort:      gh.String("created"),
-		Direction: gh.String("asc"),
+		Sort:      new("created"),
+		Direction: new("asc"),
 	})
 	if err != nil {
 		return nil, err
@@ -193,8 +193,8 @@ func (c *Client) MergePR(ctx context.Context, number int) error {
 // ApprovePR submits an approving review with "LGTM" body.
 func (c *Client) ApprovePR(ctx context.Context, number int) error {
 	_, _, err := c.inner.PullRequests.CreateReview(ctx, c.Owner, c.Repo, number, &gh.PullRequestReviewRequest{
-		Body:  gh.String("LGTM"),
-		Event: gh.String("APPROVE"),
+		Body:  new("LGTM"),
+		Event: new("APPROVE"),
 	})
 	return err
 }

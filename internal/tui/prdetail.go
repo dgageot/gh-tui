@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+
 	gh "github.com/dgageot/gh-tui/internal/github"
 )
 
@@ -42,54 +43,55 @@ func NewPRDetailModel() PRDetailModel {
 	}
 }
 
-func (m PRDetailModel) Init() tea.Cmd {
+func (m *PRDetailModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m PRDetailModel) Update(msg tea.Msg) (PRDetailModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+func (m *PRDetailModel) Update(msg tea.Msg) (PRDetailModel, tea.Cmd) {
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		if m.confirm != "" {
 			switch msg.String() {
 			case "y", "Y":
 				action := m.confirm
 				m.confirm = ""
 				if action == "merge" {
-					return m, func() tea.Msg { return mergeConfirmedMsg{} }
+					return *m, func() tea.Msg { return mergeConfirmedMsg{} }
 				}
-				return m, func() tea.Msg { return lgtmConfirmedMsg{} }
+				return *m, func() tea.Msg { return lgtmConfirmedMsg{} }
 			case "n", "N", "esc":
 				m.confirm = ""
-				return m, nil
+				return *m, nil
 			}
-			return m, nil
+			return *m, nil
 		}
 
 		switch msg.String() {
 		case "tab":
 			m.tab = (m.tab + 1) % 4
 			m.updateViewport()
-			return m, nil
+			return *m, nil
 		case "shift+tab":
 			m.tab = (m.tab + 3) % 4
 			m.updateViewport()
-			return m, nil
+			return *m, nil
 		case "M":
 			m.confirm = "merge"
-			return m, nil
+			return *m, nil
 		case "L":
 			m.confirm = "lgtm"
-			return m, nil
+			return *m, nil
 		}
 	}
 
 	var cmd tea.Cmd
 	m.viewport, cmd = m.viewport.Update(msg)
-	return m, cmd
+	return *m, cmd
 }
 
-type mergeConfirmedMsg struct{}
-type lgtmConfirmedMsg struct{}
+type (
+	mergeConfirmedMsg struct{}
+	lgtmConfirmedMsg  struct{}
+)
 
 func (m *PRDetailModel) SetSize(w, h int) {
 	m.width = w
@@ -117,7 +119,7 @@ func (m *PRDetailModel) updateViewport() {
 	m.viewport.GotoTop()
 }
 
-func (m PRDetailModel) View() string {
+func (m *PRDetailModel) View() string {
 	var b strings.Builder
 
 	if m.loading {
@@ -165,7 +167,7 @@ func (m PRDetailModel) View() string {
 	return b.String()
 }
 
-func (m PRDetailModel) renderTabContent() string {
+func (m *PRDetailModel) renderTabContent() string {
 	if m.pr == nil {
 		return ""
 	}
@@ -184,14 +186,14 @@ func (m PRDetailModel) renderTabContent() string {
 	}
 }
 
-func (m PRDetailModel) renderOverview() string {
+func (m *PRDetailModel) renderOverview() string {
 	var b strings.Builder
 
 	state := m.pr.State
 	if m.pr.Draft {
 		state = "draft"
 	}
-	b.WriteString(fmt.Sprintf("State: %s  |  Author: %s  |  Mergeable: %v\n", state, m.pr.Author, m.pr.Mergeable))
+	fmt.Fprintf(&b, "State: %s  |  Author: %s  |  Mergeable: %v\n", state, m.pr.Author, m.pr.Mergeable)
 
 	if len(m.pr.Labels) > 0 {
 		var labels []string
@@ -211,7 +213,7 @@ func (m PRDetailModel) renderOverview() string {
 	return b.String()
 }
 
-func (m PRDetailModel) renderChecks() string {
+func (m *PRDetailModel) renderChecks() string {
 	if len(m.checks) == 0 {
 		return bodyStyle.Render("No checks found.")
 	}
@@ -237,7 +239,7 @@ func (m PRDetailModel) renderChecks() string {
 	return b.String()
 }
 
-func (m PRDetailModel) renderComments() string {
+func (m *PRDetailModel) renderComments() string {
 	if len(m.comments) == 0 {
 		return bodyStyle.Render("No comments.")
 	}
@@ -246,14 +248,14 @@ func (m PRDetailModel) renderComments() string {
 	for _, c := range m.comments {
 		author := commentAuthorStyle.Render(c.Author)
 		date := commentDateStyle.Render(c.CreatedAt.Format("Jan 02 15:04"))
-		b.WriteString(fmt.Sprintf("%s  %s\n", author, date))
+		fmt.Fprintf(&b, "%s  %s\n", author, date)
 		b.WriteString(c.Body)
 		b.WriteString("\n\n")
 	}
 	return b.String()
 }
 
-func (m PRDetailModel) renderFiles() string {
+func (m *PRDetailModel) renderFiles() string {
 	if len(m.files) == 0 {
 		return bodyStyle.Render("No files changed.")
 	}
@@ -262,7 +264,7 @@ func (m PRDetailModel) renderFiles() string {
 	for _, f := range m.files {
 		adds := additionsStyle.Render(fmt.Sprintf("+%d", f.Additions))
 		dels := deletionsStyle.Render(fmt.Sprintf("-%d", f.Deletions))
-		b.WriteString(fmt.Sprintf("  %s %s  %s  %s\n", f.Status, f.Filename, adds, dels))
+		fmt.Fprintf(&b, "  %s %s  %s  %s\n", f.Status, f.Filename, adds, dels)
 	}
 	return b.String()
 }

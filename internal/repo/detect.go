@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -19,17 +20,17 @@ func Detect(flagRepo string) (owner, repo string, err error) {
 	}
 
 	if _, err := exec.LookPath("git"); err != nil {
-		return "", "", fmt.Errorf("git is not installed — use --repo owner/repo instead")
+		return "", "", errors.New("git is not installed — use --repo owner/repo instead")
 	}
 
 	if err := exec.Command("git", "rev-parse", "--git-dir").Run(); err != nil {
-		return "", "", fmt.Errorf("current directory is not a git repository — use --repo owner/repo instead")
+		return "", "", errors.New("current directory is not a git repository — use --repo owner/repo instead")
 	}
 
 	cmd := exec.Command("git", "remote", "get-url", "origin")
 	out, err := cmd.Output()
 	if err != nil {
-		return "", "", fmt.Errorf("no 'origin' remote found — use --repo owner/repo instead")
+		return "", "", errors.New("no 'origin' remote found — use --repo owner/repo instead")
 	}
 
 	return parseRemoteURL(strings.TrimSpace(string(out)))

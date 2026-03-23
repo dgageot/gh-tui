@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	gh "github.com/dgageot/gh-tui/internal/github"
 )
 
@@ -63,30 +64,29 @@ func NewPRListModel() PRListModel {
 	}
 }
 
-func (m PRListModel) Init() tea.Cmd {
+func (m *PRListModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m PRListModel) Update(msg tea.Msg) (PRListModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+func (m *PRListModel) Update(msg tea.Msg) (PRListModel, tea.Cmd) {
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		if m.searching {
 			switch msg.String() {
 			case "enter", "esc":
 				m.searching = false
-				return m, nil
+				return *m, nil
 			case "backspace":
-				if len(m.searchQuery) > 0 {
+				if m.searchQuery != "" {
 					m.searchQuery = m.searchQuery[:len(m.searchQuery)-1]
 				}
 				m.updateTableRows()
-				return m, nil
+				return *m, nil
 			default:
 				if len(msg.String()) == 1 {
 					m.searchQuery += msg.String()
 					m.updateTableRows()
 				}
-				return m, nil
+				return *m, nil
 			}
 		}
 
@@ -94,25 +94,25 @@ func (m PRListModel) Update(msg tea.Msg) (PRListModel, tea.Cmd) {
 		case "m":
 			m.filter = FilterMine
 			m.updateTableRows()
-			return m, nil
+			return *m, nil
 		case "r":
 			m.filter = FilterReviewRequested
 			m.updateTableRows()
-			return m, nil
+			return *m, nil
 		case "a":
 			m.filter = FilterAll
 			m.updateTableRows()
-			return m, nil
+			return *m, nil
 		case "/":
 			m.searching = true
 			m.searchQuery = ""
-			return m, nil
+			return *m, nil
 		}
 	}
 
 	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
-	return m, cmd
+	return *m, cmd
 }
 
 func (m *PRListModel) SetSize(w, h int) {
@@ -208,7 +208,7 @@ func (m *PRListModel) SelectedPR() *gh.PR {
 	}
 
 	var num int
-	fmt.Sscanf(row[0], "#%d", &num)
+	_, _ = fmt.Sscanf(row[0], "#%d", &num)
 
 	for i := range m.prs {
 		if m.prs[i].Number == num {
@@ -218,7 +218,7 @@ func (m *PRListModel) SelectedPR() *gh.PR {
 	return nil
 }
 
-func (m PRListModel) View() string {
+func (m *PRListModel) View() string {
 	var b strings.Builder
 
 	title := titleStyle.Render("GitHub PRs")
@@ -248,7 +248,7 @@ func (m PRListModel) View() string {
 	return b.String()
 }
 
-func (m PRListModel) filterLabel() string {
+func (m *PRListModel) filterLabel() string {
 	switch m.filter {
 	case FilterMine:
 		return "[mine]"
@@ -259,9 +259,9 @@ func (m PRListModel) filterLabel() string {
 	}
 }
 
-func truncate(s string, max int) string {
-	if len(s) <= max {
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
 		return s
 	}
-	return s[:max-1] + "…"
+	return s[:maxLen-1] + "…"
 }

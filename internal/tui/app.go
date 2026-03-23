@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	gh "github.com/dgageot/gh-tui/internal/github"
 )
 
@@ -39,20 +40,22 @@ type detailLoadedMsg struct {
 	files    []gh.ChangedFile
 }
 
-type detailErrorMsg struct{ err error }
-type mergeResultMsg struct{ err error }
-type lgtmResultMsg struct{ err error }
+type (
+	detailErrorMsg struct{ err error }
+	mergeResultMsg struct{ err error }
+	lgtmResultMsg  struct{ err error }
+)
 
 // AppModel is the root model.
 type AppModel struct {
-	client     *gh.Client
-	screen     Screen
-	list       PRListModel
-	detail     PRDetailModel
-	width      int
-	height     int
-	statusMsg  string
-	currentPR  *gh.PR
+	client      *gh.Client
+	screen      Screen
+	list        PRListModel
+	detail      PRDetailModel
+	width       int
+	height      int
+	statusMsg   string
+	currentPR   *gh.PR
 	currentUser string
 }
 

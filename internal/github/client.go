@@ -2,7 +2,7 @@ package github
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"os"
 
 	gh "github.com/google/go-github/v68/github"
@@ -19,7 +19,7 @@ type Client struct {
 func NewClient(owner, repo string) (*Client, error) {
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		return nil, fmt.Errorf("GITHUB_TOKEN environment variable is required")
+		return nil, errors.New("GITHUB_TOKEN environment variable is required")
 	}
 
 	client := gh.NewClient(nil).WithAuthToken(token)
