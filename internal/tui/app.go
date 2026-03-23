@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"strings"
 	"sync"
 
@@ -325,6 +326,12 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "q", "ctrl+c":
 			return m, tea.Quit
+		case "b":
+			if m.currentPR != nil {
+				url := fmt.Sprintf("https://github.com/%s/%s/pull/%d", m.client.Owner, m.client.Repo, m.currentPR.Number)
+				_ = exec.Command("open", url).Start()
+			}
+			return m, nil
 		default:
 			var cmd tea.Cmd
 			m.detail, cmd = m.detail.Update(msg)

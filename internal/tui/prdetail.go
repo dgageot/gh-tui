@@ -226,7 +226,7 @@ func (m *PRDetailModel) helpBar() string {
 	if m.isMergeable() {
 		pairs = append(pairs, "M", "merge")
 	}
-	pairs = append(pairs, "esc", "back")
+	pairs = append(pairs, "b", "browser", "esc", "back")
 	return formatHelpKeys(pairs...)
 }
 
