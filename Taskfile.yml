@@ -1,0 +1,60 @@
+version: "3"
+
+vars:
+  BINARY_NAME: gh-tui
+  BUILD_DIR: ./bin
+  GO_SOURCES: "**/*.go"
+
+tasks:
+  default:
+    cmd: task --list
+
+  dev:
+    deps: ["lint", "test", "build"]
+
+  build:
+    aliases: [b]
+    desc: Build the application binary
+    cmds:
+      - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} ./cmd
+    sources:
+      - "{{.GO_SOURCES}}"
+      - "go.mod"
+      - "go.sum"
+    generates:
+      - "{{.BUILD_DIR}}/{{.BINARY_NAME}}"
+
+  run:
+    aliases: [r]
+    desc: Build and run the application
+    cmds:
+      - go run ./cmd {{.CLI_ARGS}}
+
+  lint:
+    aliases: [l]
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run
+      - go mod tidy --diff >/dev/null || (echo "go.mod/go.sum files are not tidy" && exit 1)
+    sources:
+      - "{{.GO_SOURCES}}"
+      - "go.mod"
+      - "go.sum"
+      - ".golangci.yml"
+
+  format:
+    aliases: [f]
+    desc: Format code with golangci-lint
+    cmds:
+      - golangci-lint run --fix
+      - go mod tidy
+
+  test:
+    aliases: [t]
+    desc: Run tests
+    cmds:
+      - go test ./...
+    sources:
+      - "{{.GO_SOURCES}}"
+      - "go.mod"
+      - "go.sum"
