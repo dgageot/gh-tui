@@ -183,12 +183,37 @@ func (c *Client) GetChangedFiles(ctx context.Context, number int) ([]ChangedFile
 	return result, nil
 }
 
-// MergePR merges a pull request.
+// MergePR merges a pull request using the first allowed merge method.
 func (c *Client) MergePR(ctx context.Context, number int) error {
-	_, _, err := c.inner.PullRequests.Merge(ctx, c.Owner, c.Repo, number, "", &gh.PullRequestOptions{
-		MergeMethod: "squash",
+	method, err := c.preferredMergeMethod(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = c.inner.PullRequests.Merge(ctx, c.Owner, c.Repo, number, "", &gh.PullRequestOptions{
+		MergeMethod: method,
 	})
 	return err
+}
+
+// preferredMergeMethod returns the preferred merge method allowed by the repository.
+// It prefers merge > squash > rebase.
+func (c *Client) preferredMergeMethod(ctx context.Context) (string, error) {
+	repo, _, err := c.inner.Repositories.Get(ctx, c.Owner, c.Repo)
+	if err != nil {
+		return "", fmt.Errorf("failed to get repository settings: %w", err)
+	}
+
+	switch {
+	case repo.GetAllowMergeCommit():
+		return "merge", nil
+	case repo.GetAllowSquashMerge():
+		return "squash", nil
+	case repo.GetAllowRebaseMerge():
+		return "rebase", nil
+	default:
+		return "merge", nil
+	}
 }
 
 // GetReviewDecision computes the review decision for a PR based on the latest review per reviewer.
