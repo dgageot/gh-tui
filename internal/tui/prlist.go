@@ -218,31 +218,37 @@ func (m *PRListModel) updateTableRows() {
 			review = "✗ changes"
 		}
 
+		// Apply gray style to draft PRs
+		style := func(s string) string { return s }
+		if pr.Draft {
+			style = func(s string) string { return draftRowStyle.Render(s) }
+		}
+
 		var row table.Row
 		switch numCols {
 		case 3:
 			row = table.Row{
-				fmt.Sprintf("#%d", pr.Number),
-				pr.Title,
-				state,
+				style(fmt.Sprintf("#%d", pr.Number)),
+				style(pr.Title),
+				style(state),
 			}
 		case 5:
 			row = table.Row{
-				fmt.Sprintf("#%d", pr.Number),
-				pr.Title,
-				pr.Author,
-				state,
-				pr.UpdatedAt.Format("Jan 02 15:04"),
+				style(fmt.Sprintf("#%d", pr.Number)),
+				style(pr.Title),
+				style(pr.Author),
+				style(state),
+				style(pr.UpdatedAt.Format("Jan 02 15:04")),
 			}
 		default:
 			row = table.Row{
-				fmt.Sprintf("#%d", pr.Number),
-				pr.Title,
-				pr.Author,
-				state,
-				review,
-				checks,
-				pr.UpdatedAt.Format("Jan 02 15:04"),
+				style(fmt.Sprintf("#%d", pr.Number)),
+				style(pr.Title),
+				style(pr.Author),
+				style(state),
+				style(review),
+				style(checks),
+				style(pr.UpdatedAt.Format("Jan 02 15:04")),
 			}
 		}
 		rows = append(rows, row)

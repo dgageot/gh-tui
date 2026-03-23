@@ -32,6 +32,9 @@ var (
 				Background(primaryColor).
 				Bold(true)
 
+	draftRowStyle = lipgloss.NewStyle().
+			Foreground(dimColor)
+
 	// PR detail
 	tabStyle = lipgloss.NewStyle().
 			Padding(0, 2).
