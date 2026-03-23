@@ -1,0 +1,51 @@
+package repo
+
+import (
+	"fmt"
+	"os/exec"
+	"regexp"
+	"strings"
+)
+
+// Detect parses the git remote origin URL to extract owner/repo.
+// If flagRepo is non-empty (format "owner/repo"), it takes precedence.
+func Detect(flagRepo string) (owner, repo string, err error) {
+	if flagRepo != "" {
+		parts := strings.SplitN(flagRepo, "/", 2)
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			return "", "", fmt.Errorf("invalid --repo format %q, expected owner/repo", flagRepo)
+		}
+		return parts[0], parts[1], nil
+	}
+
+	if _, err := exec.LookPath("git"); err != nil {
+		return "", "", fmt.Errorf("git is not installed — use --repo owner/repo instead")
+	}
+
+	if err := exec.Command("git", "rev-parse", "--git-dir").Run(); err != nil {
+		return "", "", fmt.Errorf("current directory is not a git repository — use --repo owner/repo instead")
+	}
+
+	cmd := exec.Command("git", "remote", "get-url", "origin")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", "", fmt.Errorf("no 'origin' remote found — use --repo owner/repo instead")
+	}
+
+	return parseRemoteURL(strings.TrimSpace(string(out)))
+}
+
+var (
+	sshPattern   = regexp.MustCompile(`git@[^:]+:([^/]+)/(.+?)(?:\.git)?$`)
+	httpsPattern = regexp.MustCompile(`https?://[^/]+/([^/]+)/(.+?)(?:\.git)?$`)
+)
+
+func parseRemoteURL(url string) (string, string, error) {
+	if m := sshPattern.FindStringSubmatch(url); m != nil {
+		return m[1], m[2], nil
+	}
+	if m := httpsPattern.FindStringSubmatch(url); m != nil {
+		return m[1], m[2], nil
+	}
+	return "", "", fmt.Errorf("cannot parse git remote URL: %s", url)
+}
