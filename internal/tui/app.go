@@ -143,6 +143,30 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case tea.MouseMsg:
+		switch m.screen {
+		case ScreenList:
+			var cmd tea.Cmd
+			m.list, cmd = m.list.Update(msg)
+			return m, cmd
+		case ScreenDetail:
+			var cmd tea.Cmd
+			m.detail, cmd = m.detail.Update(msg)
+			return m, cmd
+		}
+		return m, nil
+
+	case prClickedMsg:
+		if pr := m.list.SelectedPR(); pr != nil {
+			m.currentPR = pr
+			m.screen = ScreenDetail
+			m.detail = NewPRDetailModel()
+			m.detail.currentUser = m.currentUser
+			m.detail.SetSize(m.width, m.height)
+			return m, m.loadDetail(pr.Number, pr.HeadRef)
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		m.statusMsg = ""
 

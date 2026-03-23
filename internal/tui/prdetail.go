@@ -158,6 +158,7 @@ func (m *PRDetailModel) Update(msg tea.Msg) (PRDetailModel, tea.Cmd) {
 type (
 	mergeConfirmedMsg struct{}
 	lgtmConfirmedMsg  struct{}
+	prClickedMsg      struct{}
 )
 
 func (m *PRDetailModel) SetSize(w, h int) {

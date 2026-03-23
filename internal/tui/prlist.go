@@ -70,7 +70,19 @@ func (m *PRListModel) Init() tea.Cmd {
 }
 
 func (m *PRListModel) Update(msg tea.Msg) (PRListModel, tea.Cmd) {
-	if msg, ok := msg.(tea.KeyMsg); ok {
+	switch msg := msg.(type) {
+	case tea.MouseMsg:
+		if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
+			// Row 0 is title, row 1 is header, row 2 is header border, rows 3+ are data
+			rowIdx := msg.Y - 3
+			if rowIdx >= 0 && rowIdx < len(m.table.Rows()) {
+				m.table.SetCursor(rowIdx)
+				return *m, func() tea.Msg { return prClickedMsg{} }
+			}
+		}
+		return *m, nil
+
+	case tea.KeyMsg:
 		if m.searching {
 			switch msg.String() {
 			case "enter", "esc":
