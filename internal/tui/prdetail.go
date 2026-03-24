@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	gh "github.com/dgageot/gh-tui/internal/github"
 )
@@ -239,14 +240,19 @@ func (m *PRDetailModel) tabAtPosition(x, y int) (DetailTab, bool) {
 		return 0, false
 	}
 
-	const tabPadding = 2
 	pos := 0
 	for i, name := range tabNames {
-		tabWidth := len(name) + tabPadding*2
+		var rendered string
+		if DetailTab(i) == m.tab {
+			rendered = activeTabStyle.Render(name)
+		} else {
+			rendered = tabStyle.Render(name)
+		}
+		tabWidth := lipgloss.Width(rendered)
 		if x >= pos && x < pos+tabWidth {
 			return DetailTab(i), true
 		}
-		pos += tabWidth + 1
+		pos += tabWidth + 1 // +1 for the space separator
 	}
 	return 0, false
 }
@@ -268,8 +274,14 @@ func (m *PRDetailModel) View() string {
 		return ""
 	}
 
-	// Title with number
-	b.WriteString(" " + titleStyle.Render(fmt.Sprintf(" #%d", m.pr.Number)) + "  " + titleStyle.Render(m.pr.Title))
+	// Title with number — truncate to fit width
+	number := titleStyle.Render(fmt.Sprintf(" #%d", m.pr.Number))
+	title := titleStyle.Render(m.pr.Title)
+	titleLine := " " + number + "  " + title
+	if m.width > 0 {
+		titleLine = truncateToWidth(titleLine, m.width)
+	}
+	b.WriteString(titleLine)
 	b.WriteString("\n")
 
 	// Tab bar

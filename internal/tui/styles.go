@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 var (
@@ -83,9 +84,7 @@ var (
 			Padding(0, 2).
 			Foreground(accentColor).
 			Bold(true).
-			BorderStyle(lipgloss.Border{Bottom: "▔"}).
-			BorderBottom(true).
-			BorderForeground(accentColor)
+			Underline(true)
 
 	// ── Labels ──────────────────────────────────────────────────
 
@@ -230,4 +229,12 @@ func stateBadge(state string, draft bool) string {
 	default:
 		return stateBadgeOpen.Render("open")
 	}
+}
+
+// truncateToWidth truncates an ANSI-styled string to fit within maxWidth.
+func truncateToWidth(s string, maxWidth int) string {
+	if lipgloss.Width(s) <= maxWidth {
+		return s
+	}
+	return ansi.Truncate(s, maxWidth-1, "…")
 }
