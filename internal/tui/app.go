@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -38,34 +37,28 @@ type Context struct {
 }
 
 // Messages
-type prsLoadedMsg struct {
-	prs  []gh.PR
-	user string
-}
-
-type prsErrorMsg struct{ err error }
-
-type issuesLoadedMsg struct {
+type mainPageLoadedMsg struct {
+	prs    []gh.PR
 	issues []gh.Issue
+	user   string
 }
 
-type issuesErrorMsg struct{ err error }
+type mainPageErrorMsg struct{ err error }
 
 type (
-	detailPRMsg       struct{ pr *gh.PR }
-	detailChecksMsg   struct{ checks []gh.Check }
-	detailCommentsMsg struct{ comments []gh.Comment }
-	detailFilesMsg    struct{ files []gh.ChangedFile }
-	detailReviewMsg   struct{ decision string }
-	detailErrorMsg    struct{ err error }
-	mergeResultMsg    struct{ err error }
-	lgtmResultMsg     struct{ err error }
+	detailLoadedMsg struct{ detail *gh.PRDetail }
+	detailFilesMsg  struct{ files []gh.ChangedFile }
+	detailErrorMsg  struct{ err error }
+	mergeResultMsg  struct{ err error }
+	lgtmResultMsg   struct{ err error }
 )
 
 type (
-	issueDetailMsg         struct{ issue *gh.Issue }
-	issueDetailCommentsMsg struct{ comments []gh.IssueComment }
-	issueDetailErrorMsg    struct{ err error }
+	issueDetailLoadedMsg struct {
+		issue    *gh.Issue
+		comments []gh.IssueComment
+	}
+	issueDetailErrorMsg struct{ err error }
 )
 
 // AppModel is the root model.
@@ -97,7 +90,7 @@ func NewAppModel(client *gh.Client) AppModel {
 }
 
 func (m AppModel) Init() tea.Cmd {
-	return tea.Batch(m.loadPRs(), m.loadIssues())
+	return m.loadMainPage()
 }
 
 func updateFocus(m *AppModel) {
@@ -126,54 +119,35 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issueDetail.SetSize(msg.Width, msg.Height)
 		return m, nil
 
-	case prsLoadedMsg:
+	case mainPageLoadedMsg:
 		m.currentUser = msg.user
 		m.list.SetPRs(msg.prs, msg.user)
-		updateFocus(&m)
-		return m, nil
-
-	case prsErrorMsg:
-		m.list.SetError(msg.err)
-		return m, nil
-
-	case issuesLoadedMsg:
 		m.issueList.SetIssues(msg.issues)
 		updateFocus(&m)
 		return m, nil
 
-	case issuesErrorMsg:
+	case mainPageErrorMsg:
+		m.list.SetError(msg.err)
 		m.issueList.SetError(msg.err)
 		return m, nil
 
-	case detailPRMsg:
-		m.detail.SetPR(msg.pr)
-		return m, nil
-
-	case detailChecksMsg:
-		m.detail.SetChecks(msg.checks)
-		return m, nil
-
-	case detailCommentsMsg:
-		m.detail.SetComments(msg.comments)
+	case detailLoadedMsg:
+		m.detail.SetPR(msg.detail.PR)
+		m.detail.SetChecks(msg.detail.Checks)
+		m.detail.SetComments(msg.detail.Comments)
+		m.detail.SetReviewDecision(msg.detail.PR.ReviewDecision)
 		return m, nil
 
 	case detailFilesMsg:
 		m.detail.SetFiles(msg.files)
 		return m, nil
 
-	case detailReviewMsg:
-		m.detail.SetReviewDecision(msg.decision)
-		return m, nil
-
 	case detailErrorMsg:
 		m.detail.SetError(msg.err)
 		return m, nil
 
-	case issueDetailMsg:
+	case issueDetailLoadedMsg:
 		m.issueDetail.SetIssue(msg.issue)
-		return m, nil
-
-	case issueDetailCommentsMsg:
 		m.issueDetail.SetComments(msg.comments)
 		return m, nil
 
@@ -187,7 +161,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.statusMsg = "PR merged successfully!"
 			m.screen = ScreenList
-			return m, m.loadPRs()
+			return m, m.loadMainPage()
 		}
 		return m, nil
 
@@ -288,7 +262,7 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m.openSelectedIssue()
 		case "R":
 			m.list.loading = true
-			return m, tea.Batch(m.loadPRs(), m.loadIssues())
+			return m, m.loadMainPage()
 		case "M":
 			if m.pane == PanePRs {
 				if pr := m.list.SelectedPR(); pr != nil {
@@ -298,7 +272,7 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.detail.SetSize(m.width, m.height)
 					m.detail.confirm = "merge"
 					m.screen = ScreenPRDetail
-					return m, m.loadDetail(pr.Number, pr.HeadRef)
+					return m, m.loadDetail(pr.Number)
 				}
 			}
 			return m, nil
@@ -346,6 +320,12 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "q", "ctrl+c":
 			return m, tea.Quit
+		case "b":
+			if m.currentIssue != nil {
+				url := fmt.Sprintf("https://github.com/%s/%s/issues/%d", m.client.Owner, m.client.Repo, m.currentIssue.Number)
+				_ = exec.Command("open", url).Start()
+			}
+			return m, nil
 		default:
 			var cmd tea.Cmd
 			m.issueDetail, cmd = m.issueDetail.Update(msg)
@@ -366,7 +346,7 @@ func (m AppModel) openSelectedPR() (tea.Model, tea.Cmd) {
 	m.detail = NewPRDetailModel()
 	m.detail.currentUser = m.currentUser
 	m.detail.SetSize(m.width, m.height)
-	return m, m.loadDetail(pr.Number, pr.HeadRef)
+	return m, m.loadDetail(pr.Number)
 }
 
 func (m AppModel) openSelectedIssue() (tea.Model, tea.Cmd) {
@@ -412,91 +392,40 @@ func (m AppModel) AgentContext() Context {
 
 // Commands
 
-func (m AppModel) loadPRs() tea.Cmd {
+func (m AppModel) loadMainPage() tea.Cmd {
 	return func() tea.Msg {
-		ctx := context.Background()
-
-		user, err := m.client.CurrentUser(ctx)
+		result, err := m.client.ListMainPage(context.Background())
 		if err != nil {
-			return prsErrorMsg{err: err}
+			return mainPageErrorMsg{err: err}
 		}
-
-		prs, err := m.client.ListPRs(ctx)
-		if err != nil {
-			return prsErrorMsg{err: err}
-		}
-
-		// Fetch review decisions concurrently
-		var wg sync.WaitGroup
-		for i := range prs {
-			wg.Add(1)
-			go func(i int) {
-				defer wg.Done()
-				decision, _ := m.client.GetReviewDecision(ctx, prs[i].Number)
-				prs[i].ReviewDecision = decision
-			}(i)
-		}
-		wg.Wait()
-
-		return prsLoadedMsg{prs: prs, user: user}
+		return mainPageLoadedMsg{prs: result.PRs, issues: result.Issues, user: result.CurrentUser}
 	}
 }
 
-func (m AppModel) loadIssues() tea.Cmd {
-	return func() tea.Msg {
-		issues, err := m.client.ListIssues(context.Background())
-		if err != nil {
-			return issuesErrorMsg{err: err}
-		}
-		return issuesLoadedMsg{issues: issues}
-	}
-}
-
-func (m AppModel) loadDetail(number int, ref string) tea.Cmd {
+func (m AppModel) loadDetail(number int) tea.Cmd {
 	return tea.Batch(
 		func() tea.Msg {
-			pr, err := m.client.GetPRDetail(context.Background(), number)
+			detail, err := m.client.GetPRDetail(context.Background(), number)
 			if err != nil {
 				return detailErrorMsg{err: err}
 			}
-			return detailPRMsg{pr: pr}
-		},
-		func() tea.Msg {
-			checks, _ := m.client.GetChecks(context.Background(), ref)
-			return detailChecksMsg{checks: checks}
-		},
-		func() tea.Msg {
-			comments, _ := m.client.GetComments(context.Background(), number)
-			return detailCommentsMsg{comments: comments}
+			return detailLoadedMsg{detail: detail}
 		},
 		func() tea.Msg {
 			files, _ := m.client.GetChangedFiles(context.Background(), number)
 			return detailFilesMsg{files: files}
 		},
-		func() tea.Msg {
-			decision, _ := m.client.GetReviewDecision(context.Background(), number)
-			return detailReviewMsg{decision: decision}
-		},
 	)
 }
 
 func (m AppModel) loadIssueDetail(number int) tea.Cmd {
-	return tea.Batch(
-		func() tea.Msg {
-			issue, err := m.client.GetIssue(context.Background(), number)
-			if err != nil {
-				return issueDetailErrorMsg{err: err}
-			}
-			return issueDetailMsg{issue: issue}
-		},
-		func() tea.Msg {
-			comments, err := m.client.GetIssueComments(context.Background(), number)
-			if err != nil {
-				return issueDetailErrorMsg{err: err}
-			}
-			return issueDetailCommentsMsg{comments: comments}
-		},
-	)
+	return func() tea.Msg {
+		issue, comments, err := m.client.IssueDetail(context.Background(), number)
+		if err != nil {
+			return issueDetailErrorMsg{err: err}
+		}
+		return issueDetailLoadedMsg{issue: issue, comments: comments}
+	}
 }
 
 func (m AppModel) mergePR(number int) tea.Cmd {

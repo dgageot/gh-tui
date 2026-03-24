@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	gh "github.com/google/go-github/v68/github"
@@ -47,125 +48,237 @@ type ChangedFile struct {
 	Patch     string
 }
 
-// ListPRs returns open pull requests for the repo.
-func (c *Client) ListPRs(ctx context.Context) ([]PR, error) {
-	pulls, _, err := c.inner.PullRequests.List(ctx, c.Owner, c.Repo, &gh.PullRequestListOptions{
-		State:     "open",
-		Sort:      "updated",
-		Direction: "desc",
-		ListOptions: gh.ListOptions{
-			PerPage: 50,
-		},
-	})
+// MainPageResult contains the result of the main page query: PRs, issues, and current user.
+type MainPageResult struct {
+	PRs         []PR
+	Issues      []Issue
+	CurrentUser string
+}
+
+// ListMainPage fetches open PRs, open issues, and the current user in a single GraphQL query.
+func (c *Client) ListMainPage(ctx context.Context) (*MainPageResult, error) {
+	var result struct {
+		Viewer struct {
+			Login string `json:"login"`
+		} `json:"viewer"`
+		Repository struct {
+			PullRequests struct {
+				Nodes []gqlPR `json:"nodes"`
+			} `json:"pullRequests"`
+			Issues struct {
+				Nodes []struct {
+					Number    int       `json:"number"`
+					Title     string    `json:"title"`
+					Author    *actor    `json:"author"`
+					State     string    `json:"state"`
+					Body      string    `json:"body"`
+					UpdatedAt time.Time `json:"updatedAt"`
+					Labels    struct {
+						Nodes []struct {
+							Name string `json:"name"`
+						} `json:"nodes"`
+					} `json:"labels"`
+					Comments struct {
+						TotalCount int `json:"totalCount"`
+					} `json:"comments"`
+				} `json:"nodes"`
+			} `json:"issues"`
+		} `json:"repository"`
+	}
+
+	err := c.graphql(ctx, `
+		query($owner: String!, $repo: String!) {
+			viewer { login }
+			repository(owner: $owner, name: $repo) {
+				pullRequests(first: 50, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
+					nodes {
+						number title body state isDraft
+						author { login }
+						updatedAt headRefName reviewDecision
+						labels(first: 10) { nodes { name } }
+					}
+				}
+				issues(first: 50, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
+					nodes {
+						number title body state updatedAt
+						author { login }
+						labels(first: 10) { nodes { name } }
+						comments { totalCount }
+					}
+				}
+			}
+		}
+	`, map[string]any{"owner": c.Owner, "repo": c.Repo}, &result)
 	if err != nil {
 		return nil, err
 	}
 
 	var prs []PR
-	for _, p := range pulls {
-		labels := make([]string, 0, len(p.Labels))
-		for _, l := range p.Labels {
-			labels = append(labels, l.GetName())
+	for _, n := range result.Repository.PullRequests.Nodes {
+		prs = append(prs, n.toPR())
+	}
+
+	var issues []Issue
+	for _, n := range result.Repository.Issues.Nodes {
+		var labels []string
+		for _, l := range n.Labels.Nodes {
+			labels = append(labels, l.Name)
 		}
-		prs = append(prs, PR{
-			Number:    p.GetNumber(),
-			Title:     p.GetTitle(),
-			Author:    p.GetUser().GetLogin(),
-			State:     p.GetState(),
-			Body:      p.GetBody(),
+		issues = append(issues, Issue{
+			Number:    n.Number,
+			Title:     n.Title,
+			Author:    n.Author.GetLogin(),
+			State:     n.State,
+			Body:      n.Body,
 			Labels:    labels,
-			Draft:     p.GetDraft(),
-			UpdatedAt: p.GetUpdatedAt().Time,
-			HeadRef:   p.GetHead().GetRef(),
+			UpdatedAt: n.UpdatedAt,
+			Comments:  n.Comments.TotalCount,
 		})
 	}
-	return prs, nil
+
+	return &MainPageResult{
+		PRs:         prs,
+		Issues:      issues,
+		CurrentUser: result.Viewer.Login,
+	}, nil
 }
 
-// GetPRDetail fetches full PR details including mergeable status.
-func (c *Client) GetPRDetail(ctx context.Context, number int) (*PR, error) {
-	p, _, err := c.inner.PullRequests.Get(ctx, c.Owner, c.Repo, number)
+// PRDetail contains the full detail of a PR including checks and comments.
+type PRDetail struct {
+	PR       *PR
+	Checks   []Check
+	Comments []Comment
+}
+
+// GetPRDetail fetches full PR details including checks, comments, and review info in a single query.
+// Files with patches still require REST (GraphQL doesn't expose patch content).
+func (c *Client) GetPRDetail(ctx context.Context, number int) (*PRDetail, error) {
+	var result struct {
+		Repository struct {
+			PullRequest struct {
+				gqlPR
+
+				Mergeable string `json:"mergeable"`
+				Commits   struct {
+					Nodes []struct {
+						Commit struct {
+							StatusCheckRollup *struct {
+								Contexts struct {
+									Nodes []struct {
+										TypeName   string `json:"__typename"`
+										Name       string `json:"name"`
+										Status     string `json:"status"`
+										Conclusion string `json:"conclusion"`
+									} `json:"nodes"`
+								} `json:"contexts"`
+							} `json:"statusCheckRollup"`
+						} `json:"commit"`
+					} `json:"nodes"`
+				} `json:"commits"`
+				Comments struct {
+					Nodes []struct {
+						Author    *actor    `json:"author"`
+						Body      string    `json:"body"`
+						CreatedAt time.Time `json:"createdAt"`
+					} `json:"nodes"`
+				} `json:"comments"`
+				Reviews struct {
+					Nodes []struct {
+						Author      *actor    `json:"author"`
+						Body        string    `json:"body"`
+						State       string    `json:"state"`
+						SubmittedAt time.Time `json:"submittedAt"`
+					} `json:"nodes"`
+				} `json:"reviews"`
+			} `json:"pullRequest"`
+		} `json:"repository"`
+	}
+
+	err := c.graphql(ctx, `
+		query($owner: String!, $repo: String!, $number: Int!) {
+			repository(owner: $owner, name: $repo) {
+				pullRequest(number: $number) {
+					number title body state isDraft
+					author { login }
+					updatedAt headRefName reviewDecision
+					mergeable
+					labels(first: 10) { nodes { name } }
+					commits(last: 1) {
+						nodes {
+							commit {
+								statusCheckRollup {
+									contexts(first: 50) {
+										nodes {
+											__typename
+											... on CheckRun { name status conclusion }
+										}
+									}
+								}
+							}
+						}
+					}
+					comments(first: 100) {
+						nodes { author { login } body createdAt }
+					}
+					reviews(first: 100) {
+						nodes { author { login } body state submittedAt }
+					}
+				}
+			}
+		}
+	`, map[string]any{"owner": c.Owner, "repo": c.Repo, "number": number}, &result)
 	if err != nil {
 		return nil, err
 	}
 
-	labels := make([]string, 0, len(p.Labels))
-	for _, l := range p.Labels {
-		labels = append(labels, l.GetName())
-	}
+	p := result.Repository.PullRequest
+	pr := p.toPR()
+	pr.Mergeable = strings.EqualFold(p.Mergeable, "MERGEABLE")
 
-	pr := &PR{
-		Number:    p.GetNumber(),
-		Title:     p.GetTitle(),
-		Author:    p.GetUser().GetLogin(),
-		State:     p.GetState(),
-		Body:      p.GetBody(),
-		Labels:    labels,
-		Mergeable: p.GetMergeable(),
-		Draft:     p.GetDraft(),
-		UpdatedAt: p.GetUpdatedAt().Time,
-		HeadRef:   p.GetHead().GetRef(),
-	}
-
-	return pr, nil
-}
-
-// GetChecks fetches CI check runs for a PR's head ref.
-func (c *Client) GetChecks(ctx context.Context, ref string) ([]Check, error) {
-	result, _, err := c.inner.Checks.ListCheckRunsForRef(ctx, c.Owner, c.Repo, ref, &gh.ListCheckRunsOptions{})
-	if err != nil {
-		return nil, err
-	}
-
+	// Extract checks
 	var checks []Check
-	for _, cr := range result.CheckRuns {
-		checks = append(checks, Check{
-			Name:       cr.GetName(),
-			Status:     cr.GetStatus(),
-			Conclusion: cr.GetConclusion(),
+	if len(p.Commits.Nodes) > 0 {
+		commit := p.Commits.Nodes[0].Commit
+		if commit.StatusCheckRollup != nil {
+			for _, c := range commit.StatusCheckRollup.Contexts.Nodes {
+				if c.TypeName == "CheckRun" {
+					checks = append(checks, Check{
+						Name:       c.Name,
+						Status:     strings.ToLower(c.Status),
+						Conclusion: strings.ToLower(c.Conclusion),
+					})
+				}
+			}
+		}
+	}
+
+	// Extract comments (issue comments + review bodies)
+	var comments []Comment
+	for _, cm := range p.Comments.Nodes {
+		comments = append(comments, Comment{
+			Author:    cm.Author.GetLogin(),
+			Body:      cm.Body,
+			CreatedAt: cm.CreatedAt,
 		})
 	}
-	return checks, nil
-}
-
-// GetComments fetches issue comments for a PR.
-func (c *Client) GetComments(ctx context.Context, number int) ([]Comment, error) {
-	comments, _, err := c.inner.Issues.ListComments(ctx, c.Owner, c.Repo, number, &gh.IssueListCommentsOptions{
-		Sort:      new("created"),
-		Direction: new("asc"),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	var result []Comment
-	for _, cm := range comments {
-		result = append(result, Comment{
-			Author:    cm.GetUser().GetLogin(),
-			Body:      cm.GetBody(),
-			CreatedAt: cm.GetCreatedAt().Time,
-		})
-	}
-
-	// Also fetch review comments
-	reviews, _, err := c.inner.PullRequests.ListReviews(ctx, c.Owner, c.Repo, number, &gh.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	for _, r := range reviews {
-		if r.GetBody() != "" {
-			result = append(result, Comment{
-				Author:    r.GetUser().GetLogin(),
-				Body:      fmt.Sprintf("[%s] %s", r.GetState(), r.GetBody()),
-				CreatedAt: r.GetSubmittedAt().Time,
+	for _, r := range p.Reviews.Nodes {
+		if r.Body != "" {
+			comments = append(comments, Comment{
+				Author:    r.Author.GetLogin(),
+				Body:      fmt.Sprintf("[%s] %s", r.State, r.Body),
+				CreatedAt: r.SubmittedAt,
 			})
 		}
 	}
 
-	return result, nil
+	return &PRDetail{
+		PR:       &pr,
+		Checks:   checks,
+		Comments: comments,
+	}, nil
 }
 
-// GetChangedFiles fetches the list of files changed in a PR.
+// GetChangedFiles fetches the list of files changed in a PR (REST, for patch content).
 func (c *Client) GetChangedFiles(ctx context.Context, number int) ([]ChangedFile, error) {
 	files, _, err := c.inner.PullRequests.ListFiles(ctx, c.Owner, c.Repo, number, &gh.ListOptions{PerPage: 100})
 	if err != nil {
@@ -199,7 +312,6 @@ func (c *Client) MergePR(ctx context.Context, number int) error {
 }
 
 // preferredMergeMethod returns the preferred merge method allowed by the repository.
-// It prefers merge > squash > rebase.
 func (c *Client) preferredMergeMethod(ctx context.Context) (string, error) {
 	repo, _, err := c.inner.Repositories.Get(ctx, c.Owner, c.Repo)
 	if err != nil {
@@ -218,35 +330,6 @@ func (c *Client) preferredMergeMethod(ctx context.Context) (string, error) {
 	}
 }
 
-// GetReviewDecision computes the review decision for a PR based on the latest review per reviewer.
-func (c *Client) GetReviewDecision(ctx context.Context, number int) (string, error) {
-	reviews, _, err := c.inner.PullRequests.ListReviews(ctx, c.Owner, c.Repo, number, &gh.ListOptions{PerPage: 100})
-	if err != nil {
-		return "", err
-	}
-
-	// Track the latest review state per user
-	latestByUser := map[string]string{}
-	for _, r := range reviews {
-		state := r.GetState()
-		if state == "APPROVED" || state == "CHANGES_REQUESTED" {
-			latestByUser[r.GetUser().GetLogin()] = state
-		}
-	}
-
-	if len(latestByUser) == 0 {
-		return "", nil
-	}
-
-	for _, state := range latestByUser {
-		if state == "CHANGES_REQUESTED" {
-			return "CHANGES_REQUESTED", nil
-		}
-	}
-
-	return "APPROVED", nil
-}
-
 // ApprovePR submits an approving review with "LGTM" body.
 func (c *Client) ApprovePR(ctx context.Context, number int) error {
 	_, _, err := c.inner.PullRequests.CreateReview(ctx, c.Owner, c.Repo, number, &gh.PullRequestReviewRequest{
@@ -254,4 +337,41 @@ func (c *Client) ApprovePR(ctx context.Context, number int) error {
 		Event: new("APPROVE"),
 	})
 	return err
+}
+
+// gqlPR is the shared GraphQL PR node shape.
+type gqlPR struct {
+	Number         int       `json:"number"`
+	Title          string    `json:"title"`
+	Body           string    `json:"body"`
+	State          string    `json:"state"`
+	IsDraft        bool      `json:"isDraft"`
+	Author         *actor    `json:"author"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+	HeadRefName    string    `json:"headRefName"`
+	ReviewDecision string    `json:"reviewDecision"`
+	Labels         struct {
+		Nodes []struct {
+			Name string `json:"name"`
+		} `json:"nodes"`
+	} `json:"labels"`
+}
+
+func (g *gqlPR) toPR() PR {
+	var labels []string
+	for _, l := range g.Labels.Nodes {
+		labels = append(labels, l.Name)
+	}
+	return PR{
+		Number:         g.Number,
+		Title:          g.Title,
+		Author:         g.Author.GetLogin(),
+		State:          strings.ToLower(g.State),
+		Body:           g.Body,
+		Labels:         labels,
+		Draft:          g.IsDraft,
+		UpdatedAt:      g.UpdatedAt,
+		HeadRef:        g.HeadRefName,
+		ReviewDecision: g.ReviewDecision,
+	}
 }

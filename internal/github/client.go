@@ -1,7 +1,6 @@
 package github
 
 import (
-	"context"
 	"errors"
 	"os"
 
@@ -11,6 +10,7 @@ import (
 // Client wraps the GitHub API client with owner/repo context.
 type Client struct {
 	inner *gh.Client
+	token string
 	Owner string
 	Repo  string
 }
@@ -26,16 +26,8 @@ func NewClient(owner, repo string) (*Client, error) {
 
 	return &Client{
 		inner: client,
+		token: token,
 		Owner: owner,
 		Repo:  repo,
 	}, nil
-}
-
-// CurrentUser returns the authenticated user's login.
-func (c *Client) CurrentUser(ctx context.Context) (string, error) {
-	user, _, err := c.inner.Users.Get(ctx, "")
-	if err != nil {
-		return "", err
-	}
-	return user.GetLogin(), nil
 }
