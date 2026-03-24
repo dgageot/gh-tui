@@ -80,7 +80,7 @@ func (m *IssueListModel) SetSize(w, h int) {
 	m.width = w
 	m.height = h
 	m.table.SetWidth(w)
-	m.table.SetHeight(h - 3)
+	m.table.SetHeight(h - 1)
 	m.table.SetRows(nil)
 	m.table.SetColumns(m.computeColumns(w))
 	m.updateTableRows()

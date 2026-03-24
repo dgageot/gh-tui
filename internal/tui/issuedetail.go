@@ -93,7 +93,13 @@ func (m *IssueDetailModel) View() string {
 		return ""
 	}
 
-	b.WriteString(" " + titleStyle.Render(fmt.Sprintf(" #%d", m.issue.Number)) + "  " + titleStyle.Render(m.issue.Title))
+	number := titleStyle.Render(fmt.Sprintf(" #%d", m.issue.Number))
+	title := titleStyle.Render(m.issue.Title)
+	titleLine := " " + number + "  " + title
+	if m.width > 0 {
+		titleLine = truncateToWidth(titleLine, m.width)
+	}
+	b.WriteString(titleLine)
 	b.WriteString("\n")
 	b.WriteString(m.viewport.View())
 	b.WriteString("\n")

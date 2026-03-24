@@ -215,6 +215,10 @@ func (m AppModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			m.list, cmd = m.list.Update(msg)
 			return m, cmd
 		}
+		if msg.Y == topH {
+			// Separator line — ignore
+			return m, nil
+		}
 		// Adjust Y for the issue list
 		adjusted := tea.MouseMsg{
 			X:      msg.X,
