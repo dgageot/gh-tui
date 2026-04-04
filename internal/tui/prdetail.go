@@ -266,15 +266,16 @@ func (m *PRDetailModel) View() string {
 	b.WriteString("\n")
 
 	// Tab bar
-	var tabs []string
 	for i, name := range tabNames {
+		if i > 0 {
+			b.WriteString(" ")
+		}
 		if DetailTab(i) == m.tab {
-			tabs = append(tabs, activeTabStyle.Render(name))
+			b.WriteString(activeTabStyle.Render(name))
 		} else {
-			tabs = append(tabs, tabStyle.Render(name))
+			b.WriteString(tabStyle.Render(name))
 		}
 	}
-	b.WriteString(strings.Join(tabs, " "))
 	b.WriteString("\n")
 
 	// Viewport
