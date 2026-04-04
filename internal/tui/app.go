@@ -135,7 +135,6 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.detail.SetPR(msg.detail.PR)
 		m.detail.SetChecks(msg.detail.Checks)
 		m.detail.SetComments(msg.detail.Comments)
-		m.detail.SetReviewDecision(msg.detail.PR.ReviewDecision)
 		return m, nil
 
 	case detailFilesMsg:

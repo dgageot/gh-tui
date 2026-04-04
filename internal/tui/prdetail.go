@@ -181,13 +181,6 @@ func (m *PRDetailModel) SetFiles(files []gh.ChangedFile) {
 	m.updateViewport()
 }
 
-func (m *PRDetailModel) SetReviewDecision(decision string) {
-	if m.pr != nil {
-		m.pr.ReviewDecision = decision
-	}
-	m.updateViewport()
-}
-
 func (m *PRDetailModel) SetError(err error) {
 	m.err = err
 }
