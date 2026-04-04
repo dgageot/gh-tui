@@ -98,12 +98,16 @@ func updateFocus(m *AppModel) {
 	m.issueList.SetFocused(m.pane == PaneIssues)
 }
 
+// topPaneHeight returns the height of the top pane (PRs) in the split layout.
+func (m *AppModel) topPaneHeight() int {
+	return (m.height - 1) / 2
+}
+
 func setSizes(m *AppModel) {
 	if m.width == 0 || m.height == 0 {
 		return
 	}
-	// Split: top half for PRs, bottom half for issues, 1 line separator
-	topH := (m.height - 1) / 2
+	topH := m.topPaneHeight()
 	botH := m.height - topH - 1
 	m.list.SetSize(m.width, topH)
 	m.issueList.SetSize(m.width, botH)
@@ -204,7 +208,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m AppModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	switch m.screen {
 	case ScreenList:
-		topH := (m.height - 1) / 2
+		topH := m.topPaneHeight()
 		if msg.Y < topH {
 			if m.pane != PanePRs {
 				m.pane = PanePRs
