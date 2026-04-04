@@ -29,16 +29,6 @@ func NewIssueDetailModel() IssueDetailModel {
 }
 
 func (m *IssueDetailModel) Update(msg tea.Msg) (IssueDetailModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.MouseMsg:
-		var cmd tea.Cmd
-		m.viewport, cmd = m.viewport.Update(msg)
-		return *m, cmd
-
-	case tea.KeyMsg:
-		// viewport handles scrolling
-	}
-
 	var cmd tea.Cmd
 	m.viewport, cmd = m.viewport.Update(msg)
 	return *m, cmd
