@@ -85,7 +85,7 @@ func (m AppModel) Init() tea.Cmd {
 	return m.loadMainPage()
 }
 
-func updateFocus(m *AppModel) {
+func (m *AppModel) updateFocus() {
 	m.list.SetFocused(m.pane == PanePRs)
 	m.issueList.SetFocused(m.pane == PaneIssues)
 }
@@ -95,7 +95,7 @@ func (m *AppModel) topPaneHeight() int {
 	return (m.height - 1) / 2
 }
 
-func setSizes(m *AppModel) {
+func (m *AppModel) setSizes() {
 	if m.width == 0 || m.height == 0 {
 		return
 	}
@@ -110,7 +110,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		setSizes(&m)
+		m.setSizes()
 		m.detail.SetSize(msg.Width, msg.Height)
 		m.issueDetail.SetSize(msg.Width, msg.Height)
 		return m, nil
@@ -119,7 +119,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentUser = msg.user
 		m.list.SetPRs(msg.prs, msg.user)
 		m.issueList.SetIssues(msg.issues)
-		updateFocus(&m)
+		m.updateFocus()
 		return m, nil
 
 	case mainPageErrorMsg:
@@ -204,7 +204,7 @@ func (m AppModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		if msg.Y < topH {
 			if m.pane != PanePRs {
 				m.pane = PanePRs
-				updateFocus(&m)
+				m.updateFocus()
 			}
 			var cmd tea.Cmd
 			m.list, cmd = m.list.Update(msg)
@@ -223,7 +223,7 @@ func (m AppModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		if m.pane != PaneIssues {
 			m.pane = PaneIssues
-			updateFocus(&m)
+			m.updateFocus()
 		}
 		var cmd tea.Cmd
 		m.issueList, cmd = m.issueList.Update(adjusted)
@@ -252,7 +252,7 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			} else {
 				m.pane = PanePRs
 			}
-			updateFocus(&m)
+			m.updateFocus()
 			return m, nil
 		case "enter":
 			if m.pane == PanePRs {
