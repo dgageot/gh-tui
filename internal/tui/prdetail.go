@@ -362,6 +362,22 @@ func (m *PRDetailModel) renderTabContent() string {
 	}
 }
 
+// countChecks tallies check results by conclusion.
+func countChecks(checks []gh.Check) (pass, fail, pending int) {
+	for _, c := range checks {
+		switch c.Conclusion {
+		case "success":
+			pass++
+		case "failure", "cancelled", "timed_out", "action_required":
+			fail++
+		default:
+			pending++
+		}
+	}
+
+	return pass, fail, pending
+}
+
 func (m *PRDetailModel) renderOverview() string {
 	var b strings.Builder
 
@@ -403,17 +419,7 @@ func (m *PRDetailModel) renderOverview() string {
 
 	// Checks summary inline
 	if m.checksLoaded && len(m.checks) > 0 {
-		pass, fail, pending := 0, 0, 0
-		for _, c := range m.checks {
-			switch c.Conclusion {
-			case "success":
-				pass++
-			case "failure", "cancelled", "timed_out", "action_required":
-				fail++
-			default:
-				pending++
-			}
-		}
+		pass, fail, pending := countChecks(m.checks)
 		var checksText string
 		switch {
 		case fail > 0:
@@ -449,17 +455,7 @@ func (m *PRDetailModel) renderChecks() string {
 
 	var b strings.Builder
 
-	pass, fail, pending := 0, 0, 0
-	for _, c := range m.checks {
-		switch c.Conclusion {
-		case "success":
-			pass++
-		case "failure", "cancelled", "timed_out", "action_required":
-			fail++
-		default:
-			pending++
-		}
-	}
+	pass, fail, pending := countChecks(m.checks)
 
 	b.WriteString("\n")
 	fmt.Fprintf(&b, "  %d checks: ", len(m.checks))
