@@ -558,12 +558,10 @@ func (m *PRDetailModel) renderFiles() string {
 	b.WriteString("\n\n")
 
 	const maxBarLen = 20
-	maxChanges := 0
-	for _, f := range m.files {
-		if total := f.Additions + f.Deletions; total > maxChanges {
-			maxChanges = total
-		}
-	}
+	maxFile := slices.MaxFunc(m.files, func(a, b gh.ChangedFile) int {
+		return (a.Additions + a.Deletions) - (b.Additions + b.Deletions)
+	})
+	maxChanges := maxFile.Additions + maxFile.Deletions
 
 	for i, f := range m.files {
 		total := f.Additions + f.Deletions
