@@ -227,11 +227,14 @@ func stateBadge(state string, draft bool) string {
 
 // renderLabels returns styled labels joined by spaces.
 func renderLabels(labels []string) string {
-	var styled []string
-	for _, l := range labels {
-		styled = append(styled, labelStyle.Render(l))
+	var b strings.Builder
+	for i, l := range labels {
+		if i > 0 {
+			b.WriteString(" ")
+		}
+		b.WriteString(labelStyle.Render(l))
 	}
-	return strings.Join(styled, " ")
+	return b.String()
 }
 
 // truncateToWidth truncates an ANSI-styled string to fit within maxWidth.
