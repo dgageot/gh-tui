@@ -57,8 +57,7 @@ func (m *IssueListModel) SetFocused(focused bool) {
 }
 
 func (m *IssueListModel) Update(msg tea.Msg) (IssueListModel, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.MouseMsg:
+	if msg, ok := msg.(tea.MouseMsg); ok {
 		if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
 			rowIdx := msg.Y - 3
 			if rowIdx >= 0 && rowIdx < len(m.table.Rows()) {
@@ -67,9 +66,6 @@ func (m *IssueListModel) Update(msg tea.Msg) (IssueListModel, tea.Cmd) {
 			}
 		}
 		return *m, nil
-
-	case tea.KeyMsg:
-		// pass through to table
 	}
 
 	var cmd tea.Cmd
