@@ -49,8 +49,9 @@ func NewIssueListModel() IssueListModel {
 
 func (m *IssueListModel) SetFocused(focused bool) {
 	m.focused = focused
-	m.table.Focus()
-	if !focused {
+	if focused {
+		m.table.Focus()
+	} else {
 		m.table.Blur()
 	}
 }
