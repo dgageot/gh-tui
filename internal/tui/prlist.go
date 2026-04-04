@@ -325,15 +325,13 @@ func (m *PRListModel) View() string {
 	return b.String()
 }
 
+var filterLabels = map[FilterMode]string{
+	FilterAll:             "all",
+	FilterMine:            "mine",
+	FilterReviewRequested: "review requested",
+}
+
 func (m *PRListModel) filterPill() string {
-	var label string
-	switch m.filter {
-	case FilterMine:
-		label = "mine"
-	case FilterReviewRequested:
-		label = "review requested"
-	default:
-		label = "all"
-	}
+	label := filterLabels[m.filter]
 	return dimTextStyle.Render("⟨") + statusBarStyle.Render(label) + dimTextStyle.Render("⟩")
 }
