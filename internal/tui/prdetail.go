@@ -223,10 +223,6 @@ func (m *PRDetailModel) helpBar() string {
 	return formatHelpKeys(pairs...)
 }
 
-func (m *PRDetailModel) loading() bool {
-	return !m.prLoaded && m.err == nil
-}
-
 func (m *PRDetailModel) tabAtPosition(x, y int) (DetailTab, bool) {
 	if y != 1 {
 		return 0, false
@@ -252,7 +248,7 @@ func (m *PRDetailModel) tabAtPosition(x, y int) (DetailTab, bool) {
 func (m *PRDetailModel) View() string {
 	var b strings.Builder
 
-	if m.loading() {
+	if !m.prLoaded && m.err == nil {
 		b.WriteString(loadingStyle.Render("  Loading PR details…"))
 		return b.String()
 	}

@@ -58,14 +58,10 @@ func (m *IssueDetailModel) updateViewport() {
 	m.viewport.GotoTop()
 }
 
-func (m *IssueDetailModel) loading() bool {
-	return !m.issueLoaded && m.err == nil
-}
-
 func (m *IssueDetailModel) View() string {
 	var b strings.Builder
 
-	if m.loading() {
+	if !m.issueLoaded && m.err == nil {
 		b.WriteString(loadingStyle.Render("  Loading issue details…"))
 		return b.String()
 	}
