@@ -125,7 +125,6 @@ func (m *PRListModel) SetSize(w, h int) {
 	m.height = h
 	m.table.SetWidth(w)
 	m.table.SetHeight(h - 2)
-	m.table.SetRows(nil)
 	m.table.SetColumns(m.computeColumns(w))
 	m.updateTableRows()
 }
