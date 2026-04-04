@@ -65,9 +65,13 @@ type labelNode struct {
 
 // extractLabels extracts label names from GraphQL label nodes.
 func extractLabels(nodes []labelNode) []string {
-	var labels []string
-	for _, l := range nodes {
-		labels = append(labels, l.Name)
+	if len(nodes) == 0 {
+		return nil
+	}
+
+	labels := make([]string, len(nodes))
+	for i, l := range nodes {
+		labels[i] = l.Name
 	}
 	return labels
 }
