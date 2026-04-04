@@ -381,11 +381,11 @@ func (m *PRDetailModel) renderOverview() string {
 	fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Updated"), m.pr.UpdatedAt.Format("Jan 02, 2006 15:04"))
 
 	// Mergeable
-	mergeLabel, mergeStyle := "✗ No", mergeableNoStyle
 	if m.pr.Mergeable {
-		mergeLabel, mergeStyle = "✓ Yes", mergeableYesStyle
+		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Mergeable"), mergeableYesStyle.Render("✓ Yes"))
+	} else {
+		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Mergeable"), mergeableNoStyle.Render("✗ No"))
 	}
-	fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Mergeable"), mergeStyle.Render(mergeLabel))
 
 	// Review
 	switch m.pr.ReviewDecision {
