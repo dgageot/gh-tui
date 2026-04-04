@@ -105,11 +105,7 @@ func (m *IssueDetailModel) renderContent() string {
 	fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Updated"), m.issue.UpdatedAt.Format("Jan 02, 2006 15:04"))
 
 	if len(m.issue.Labels) > 0 {
-		var labels []string
-		for _, l := range m.issue.Labels {
-			labels = append(labels, labelStyle.Render(l))
-		}
-		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Labels"), strings.Join(labels, " "))
+		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Labels"), renderLabels(m.issue.Labels))
 	}
 
 	b.WriteString("\n")

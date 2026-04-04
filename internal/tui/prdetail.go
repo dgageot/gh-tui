@@ -399,11 +399,7 @@ func (m *PRDetailModel) renderOverview() string {
 
 	// Labels
 	if len(m.pr.Labels) > 0 {
-		var labels []string
-		for _, l := range m.pr.Labels {
-			labels = append(labels, labelStyle.Render(l))
-		}
-		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Labels"), strings.Join(labels, " "))
+		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Labels"), renderLabels(m.pr.Labels))
 	}
 
 	// Checks summary inline

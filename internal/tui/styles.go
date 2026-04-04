@@ -225,6 +225,15 @@ func stateBadge(state string, draft bool) string {
 	}
 }
 
+// renderLabels returns styled labels joined by spaces.
+func renderLabels(labels []string) string {
+	var styled []string
+	for _, l := range labels {
+		styled = append(styled, labelStyle.Render(l))
+	}
+	return strings.Join(styled, " ")
+}
+
 // truncateToWidth truncates an ANSI-styled string to fit within maxWidth.
 func truncateToWidth(s string, maxWidth int) string {
 	if lipgloss.Width(s) <= maxWidth {
