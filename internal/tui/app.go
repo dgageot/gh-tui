@@ -298,8 +298,7 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "b":
 			if m.currentPR != nil {
-				url := fmt.Sprintf("https://github.com/%s/%s/pull/%d", m.client.Owner, m.client.Repo, m.currentPR.Number)
-				_ = exec.Command("open", url).Start()
+				m.openInBrowser(fmt.Sprintf("pull/%d", m.currentPR.Number))
 			}
 			return m, nil
 		default:
@@ -318,8 +317,7 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "b":
 			if m.currentIssue != nil {
-				url := fmt.Sprintf("https://github.com/%s/%s/issues/%d", m.client.Owner, m.client.Repo, m.currentIssue.Number)
-				_ = exec.Command("open", url).Start()
+				m.openInBrowser(fmt.Sprintf("issues/%d", m.currentIssue.Number))
 			}
 			return m, nil
 		default:
@@ -330,6 +328,12 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// openInBrowser opens the given path (e.g. "pull/42") in the GitHub repo.
+func (m AppModel) openInBrowser(path string) {
+	url := fmt.Sprintf("https://github.com/%s/%s/%s", m.client.Owner, m.client.Repo, path)
+	_ = exec.Command("open", url).Start()
 }
 
 func (m AppModel) openSelectedPR() (tea.Model, tea.Cmd) {
