@@ -238,6 +238,8 @@ func (m *PRListModel) updateTableRows() {
 }
 
 func (m *PRListModel) filteredPRs() []gh.PR {
+	q := strings.ToLower(m.searchQuery)
+
 	var filtered []gh.PR
 	for _, pr := range m.prs {
 		switch m.filter {
@@ -251,8 +253,7 @@ func (m *PRListModel) filteredPRs() []gh.PR {
 			}
 		}
 
-		if m.searchQuery != "" {
-			q := strings.ToLower(m.searchQuery)
+		if q != "" {
 			if !strings.Contains(strings.ToLower(pr.Title), q) &&
 				!strings.Contains(strings.ToLower(pr.Author), q) {
 				continue
