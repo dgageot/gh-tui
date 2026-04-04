@@ -19,6 +19,13 @@ func Detect(flagRepo string) (owner, repo string, err error) {
 		return parts[0], parts[1], nil
 	}
 
+	// Optimistic: try to get the remote URL directly. This avoids
+	// extra subprocess calls in the common case (a git repo with an origin).
+	if out, err := exec.Command("git", "remote", "get-url", "origin").Output(); err == nil {
+		return parseRemoteURL(strings.TrimSpace(string(out)))
+	}
+
+	// Slow path: figure out what went wrong and return a helpful error.
 	if _, err := exec.LookPath("git"); err != nil {
 		return "", "", errors.New("git is not installed — use --repo owner/repo instead")
 	}
@@ -27,13 +34,7 @@ func Detect(flagRepo string) (owner, repo string, err error) {
 		return "", "", errors.New("current directory is not a git repository — use --repo owner/repo instead")
 	}
 
-	cmd := exec.Command("git", "remote", "get-url", "origin")
-	out, err := cmd.Output()
-	if err != nil {
-		return "", "", errors.New("no 'origin' remote found — use --repo owner/repo instead")
-	}
-
-	return parseRemoteURL(strings.TrimSpace(string(out)))
+	return "", "", errors.New("no 'origin' remote found — use --repo owner/repo instead")
 }
 
 var (
