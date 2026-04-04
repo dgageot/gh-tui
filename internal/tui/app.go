@@ -269,13 +269,10 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "M":
 			if m.pane == PanePRs {
 				if pr := m.list.SelectedPR(); pr != nil {
-					m.currentPR = pr
-					m.detail = PRDetailModel{}
-					m.detail.currentUser = m.currentUser
-					m.detail.SetSize(m.width, m.height)
-					m.detail.confirm = "merge"
-					m.screen = ScreenPRDetail
-					return m, m.loadDetail(pr.Number)
+					model, cmd := m.openSelectedPR()
+					app := model.(AppModel)
+					app.detail.confirm = "merge"
+					return app, cmd
 				}
 			}
 			return m, nil
