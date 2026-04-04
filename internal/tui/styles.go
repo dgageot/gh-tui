@@ -185,17 +185,13 @@ var (
 
 // formatHelpKeys renders key bindings as styled "key:desc" pairs.
 func formatHelpKeys(pairs ...string) string {
-	var parts []string
-	for i := 0; i+1 < len(pairs); i += 2 {
-		parts = append(parts, helpKeyStyle.Render(pairs[i])+helpDescStyle.Render(":"+pairs[i+1]))
-	}
 	var b strings.Builder
 	b.WriteString(" ")
-	for i, p := range parts {
+	for i := 0; i+1 < len(pairs); i += 2 {
 		if i > 0 {
 			b.WriteString(dimTextStyle.Render("  "))
 		}
-		b.WriteString(p)
+		b.WriteString(helpKeyStyle.Render(pairs[i]) + helpDescStyle.Render(":"+pairs[i+1]))
 	}
 	return b.String()
 }
