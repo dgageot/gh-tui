@@ -597,8 +597,8 @@ func (m *PRDetailModel) renderFiles() string {
 			delBar = barLen - addBar
 		}
 
-		bar := fileBarAdditionsStyle.Render(strings.Repeat("█", addBar)) +
-			fileBarDeletionsStyle.Render(strings.Repeat("█", delBar)) +
+		bar := additionsStyle.Render(strings.Repeat("█", addBar)) +
+			deletionsStyle.Render(strings.Repeat("█", delBar)) +
 			dimTextStyle.Render(strings.Repeat("░", maxBarLen-addBar-delBar))
 
 		adds := additionsStyle.Render(fmt.Sprintf("%+4d", f.Additions))

@@ -112,10 +112,8 @@ var (
 
 	// ── Files ───────────────────────────────────────────────────
 
-	additionsStyle        = lipgloss.NewStyle().Foreground(greenColor)
-	deletionsStyle        = lipgloss.NewStyle().Foreground(redColor)
-	fileBarAdditionsStyle = lipgloss.NewStyle().Foreground(greenColor)
-	fileBarDeletionsStyle = lipgloss.NewStyle().Foreground(redColor)
+	additionsStyle = lipgloss.NewStyle().Foreground(greenColor)
+	deletionsStyle = lipgloss.NewStyle().Foreground(redColor)
 
 	// ── Detail sections ─────────────────────────────────────────
 
