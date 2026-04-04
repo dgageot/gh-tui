@@ -47,10 +47,6 @@ type PRDetailModel struct {
 	viewingDiff  bool
 }
 
-func NewPRDetailModel() PRDetailModel {
-	return PRDetailModel{}
-}
-
 func (m *PRDetailModel) Init() tea.Cmd {
 	return nil
 }

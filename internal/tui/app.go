@@ -85,7 +85,7 @@ func NewAppModel(client *gh.Client) AppModel {
 		pane:      PanePRs,
 		list:      NewPRListModel(),
 		issueList: NewIssueListModel(),
-		detail:    NewPRDetailModel(),
+		detail:    PRDetailModel{},
 	}
 }
 
@@ -271,7 +271,7 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.pane == PanePRs {
 				if pr := m.list.SelectedPR(); pr != nil {
 					m.currentPR = pr
-					m.detail = NewPRDetailModel()
+					m.detail = PRDetailModel{}
 					m.detail.currentUser = m.currentUser
 					m.detail.SetSize(m.width, m.height)
 					m.detail.confirm = "merge"
@@ -347,7 +347,7 @@ func (m AppModel) openSelectedPR() (tea.Model, tea.Cmd) {
 	}
 	m.currentPR = pr
 	m.screen = ScreenPRDetail
-	m.detail = NewPRDetailModel()
+	m.detail = PRDetailModel{}
 	m.detail.currentUser = m.currentUser
 	m.detail.SetSize(m.width, m.height)
 	return m, m.loadDetail(pr.Number)
@@ -360,7 +360,7 @@ func (m AppModel) openSelectedIssue() (tea.Model, tea.Cmd) {
 	}
 	m.currentIssue = issue
 	m.screen = ScreenIssueDetail
-	m.issueDetail = NewIssueDetailModel()
+	m.issueDetail = IssueDetailModel{}
 	m.issueDetail.SetSize(m.width, m.height)
 	return m, m.loadIssueDetail(issue.Number)
 }

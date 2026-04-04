@@ -24,10 +24,6 @@ type IssueDetailModel struct {
 	commentsLoaded bool
 }
 
-func NewIssueDetailModel() IssueDetailModel {
-	return IssueDetailModel{}
-}
-
 func (m *IssueDetailModel) Update(msg tea.Msg) (IssueDetailModel, tea.Cmd) {
 	var cmd tea.Cmd
 	m.viewport, cmd = m.viewport.Update(msg)
