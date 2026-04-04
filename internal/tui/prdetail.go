@@ -47,10 +47,6 @@ type PRDetailModel struct {
 	viewingDiff  bool
 }
 
-func (m *PRDetailModel) Init() tea.Cmd {
-	return nil
-}
-
 func (m *PRDetailModel) Update(msg tea.Msg) (PRDetailModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.MouseMsg:

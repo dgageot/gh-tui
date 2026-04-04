@@ -61,10 +61,6 @@ func NewPRListModel() PRListModel {
 	}
 }
 
-func (m *PRListModel) Init() tea.Cmd {
-	return nil
-}
-
 func (m *PRListModel) Update(msg tea.Msg) (PRListModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.MouseMsg:
