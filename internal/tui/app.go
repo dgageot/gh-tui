@@ -28,14 +28,6 @@ const (
 	PaneIssues
 )
 
-// Context exposes state for future agent integration.
-type Context struct {
-	Owner       string
-	Repo        string
-	CurrentPR   *gh.PR
-	FilteredPRs []gh.PR
-}
-
 // Messages
 type mainPageLoadedMsg struct {
 	prs    []gh.PR
@@ -382,16 +374,6 @@ func (m AppModel) View() string {
 	}
 
 	return view
-}
-
-// AgentContext returns the current context for agent integration.
-func (m AppModel) AgentContext() Context {
-	return Context{
-		Owner:       m.client.Owner,
-		Repo:        m.client.Repo,
-		CurrentPR:   m.currentPR,
-		FilteredPRs: m.list.prs,
-	}
 }
 
 // Commands
