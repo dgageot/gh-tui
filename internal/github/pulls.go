@@ -327,8 +327,8 @@ func (c *Client) preferredMergeMethod(ctx context.Context) (string, error) {
 // ApprovePR submits an approving review with "LGTM" body.
 func (c *Client) ApprovePR(ctx context.Context, number int) error {
 	_, _, err := c.inner.PullRequests.CreateReview(ctx, c.Owner, c.Repo, number, &gh.PullRequestReviewRequest{
-		Body:  new("LGTM"),
-		Event: new("APPROVE"),
+		Body:  gh.Ptr("LGTM"),
+		Event: gh.Ptr("APPROVE"),
 	})
 	return err
 }
