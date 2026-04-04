@@ -35,10 +35,8 @@ func (c *Client) IssueDetail(ctx context.Context, number int) (*Issue, []IssueCo
 				State     string    `json:"state"`
 				Body      string    `json:"body"`
 				UpdatedAt time.Time `json:"updatedAt"`
-				Labels    struct {
-					Nodes []struct {
-						Name string `json:"name"`
-					} `json:"nodes"`
+				Labels struct {
+					Nodes []labelNode `json:"nodes"`
 				} `json:"labels"`
 				Comments struct {
 					TotalCount int `json:"totalCount"`
@@ -72,18 +70,13 @@ func (c *Client) IssueDetail(ctx context.Context, number int) (*Issue, []IssueCo
 	}
 
 	n := result.Repository.Issue
-	var labels []string
-	for _, l := range n.Labels.Nodes {
-		labels = append(labels, l.Name)
-	}
-
 	issue := &Issue{
 		Number:    n.Number,
 		Title:     n.Title,
 		Author:    n.Author.GetLogin(),
 		State:     n.State,
 		Body:      n.Body,
-		Labels:    labels,
+		Labels:    extractLabels(n.Labels.Nodes),
 		UpdatedAt: n.UpdatedAt,
 		Comments:  n.Comments.TotalCount,
 	}

@@ -58,6 +58,20 @@ func (c *Client) graphql(ctx context.Context, query string, variables map[string
 	return json.Unmarshal(gqlResp.Data, result)
 }
 
+// labelNode is the shape of a GraphQL label node.
+type labelNode struct {
+	Name string `json:"name"`
+}
+
+// extractLabels extracts label names from GraphQL label nodes.
+func extractLabels(nodes []labelNode) []string {
+	var labels []string
+	for _, l := range nodes {
+		labels = append(labels, l.Name)
+	}
+	return labels
+}
+
 // actor is a reusable type for GitHub actors (users, bots, etc.).
 type actor struct {
 	Login string `json:"login"`

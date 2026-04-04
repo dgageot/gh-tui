@@ -73,10 +73,8 @@ func (c *Client) ListMainPage(ctx context.Context) (*MainPageResult, error) {
 					State     string    `json:"state"`
 					Body      string    `json:"body"`
 					UpdatedAt time.Time `json:"updatedAt"`
-					Labels    struct {
-						Nodes []struct {
-							Name string `json:"name"`
-						} `json:"nodes"`
+					Labels struct {
+						Nodes []labelNode `json:"nodes"`
 					} `json:"labels"`
 					Comments struct {
 						TotalCount int `json:"totalCount"`
@@ -120,17 +118,13 @@ func (c *Client) ListMainPage(ctx context.Context) (*MainPageResult, error) {
 
 	var issues []Issue
 	for _, n := range result.Repository.Issues.Nodes {
-		var labels []string
-		for _, l := range n.Labels.Nodes {
-			labels = append(labels, l.Name)
-		}
 		issues = append(issues, Issue{
 			Number:    n.Number,
 			Title:     n.Title,
 			Author:    n.Author.GetLogin(),
 			State:     n.State,
 			Body:      n.Body,
-			Labels:    labels,
+			Labels:    extractLabels(n.Labels.Nodes),
 			UpdatedAt: n.UpdatedAt,
 			Comments:  n.Comments.TotalCount,
 		})
@@ -350,25 +344,19 @@ type gqlPR struct {
 	UpdatedAt      time.Time `json:"updatedAt"`
 	HeadRefName    string    `json:"headRefName"`
 	ReviewDecision string    `json:"reviewDecision"`
-	Labels         struct {
-		Nodes []struct {
-			Name string `json:"name"`
-		} `json:"nodes"`
+	Labels struct {
+		Nodes []labelNode `json:"nodes"`
 	} `json:"labels"`
 }
 
 func (g *gqlPR) toPR() PR {
-	var labels []string
-	for _, l := range g.Labels.Nodes {
-		labels = append(labels, l.Name)
-	}
 	return PR{
 		Number:         g.Number,
 		Title:          g.Title,
 		Author:         g.Author.GetLogin(),
 		State:          strings.ToLower(g.State),
 		Body:           g.Body,
-		Labels:         labels,
+		Labels:         extractLabels(g.Labels.Nodes),
 		Draft:          g.IsDraft,
 		UpdatedAt:      g.UpdatedAt,
 		HeadRef:        g.HeadRefName,
