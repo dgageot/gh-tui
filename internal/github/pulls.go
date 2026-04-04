@@ -313,8 +313,6 @@ func (c *Client) preferredMergeMethod(ctx context.Context) (string, error) {
 	}
 
 	switch {
-	case repo.GetAllowMergeCommit():
-		return "merge", nil
 	case repo.GetAllowSquashMerge():
 		return "squash", nil
 	case repo.GetAllowRebaseMerge():
