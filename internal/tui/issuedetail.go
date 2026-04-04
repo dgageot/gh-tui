@@ -20,7 +20,6 @@ type IssueDetailModel struct {
 	err            error
 	width          int
 	height         int
-	issueLoaded    bool
 	commentsLoaded bool
 }
 
@@ -39,7 +38,6 @@ func (m *IssueDetailModel) SetSize(w, h int) {
 
 func (m *IssueDetailModel) SetIssue(issue *gh.Issue) {
 	m.issue = issue
-	m.issueLoaded = true
 	m.updateViewport()
 }
 
@@ -61,7 +59,7 @@ func (m *IssueDetailModel) updateViewport() {
 func (m *IssueDetailModel) View() string {
 	var b strings.Builder
 
-	if !m.issueLoaded && m.err == nil {
+	if m.issue == nil && m.err == nil {
 		b.WriteString(loadingStyle.Render("  Loading issue details…"))
 		return b.String()
 	}
