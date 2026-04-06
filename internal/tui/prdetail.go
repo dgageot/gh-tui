@@ -378,21 +378,23 @@ func (m *PRDetailModel) renderOverview() string {
 	fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Updated"), m.pr.UpdatedAt.Format("Jan 02, 2006 15:04"))
 
 	// Mergeable
+	mergeableText := mergeableNoStyle.Render("✗ No")
 	if m.pr.Mergeable {
-		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Mergeable"), mergeableYesStyle.Render("✓ Yes"))
-	} else {
-		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Mergeable"), mergeableNoStyle.Render("✗ No"))
+		mergeableText = mergeableYesStyle.Render("✓ Yes")
 	}
+	fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Mergeable"), mergeableText)
 
 	// Review
+	var reviewText string
 	switch m.pr.ReviewDecision {
 	case "APPROVED":
-		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Review"), reviewApprovedStyle.Render("✓ Approved"))
+		reviewText = reviewApprovedStyle.Render("✓ Approved")
 	case "CHANGES_REQUESTED":
-		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Review"), reviewChangesStyle.Render("✗ Changes requested"))
+		reviewText = reviewChangesStyle.Render("✗ Changes requested")
 	default:
-		fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Review"), reviewPendingStyle.Render("⏳ Pending"))
+		reviewText = reviewPendingStyle.Render("⏳ Pending")
 	}
+	fmt.Fprintf(&b, "  %-14s %s\n", dimTextStyle.Render("Review"), reviewText)
 
 	// Labels
 	if len(m.pr.Labels) > 0 {
