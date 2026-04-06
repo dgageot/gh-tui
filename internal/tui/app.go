@@ -119,6 +119,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentUser = msg.user
 		m.list.SetPRs(msg.prs, msg.user)
 		m.issueList.SetIssues(msg.issues)
+		m.setSizes()
 		m.updateFocus()
 		return m, nil
 
