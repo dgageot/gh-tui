@@ -70,8 +70,8 @@ type AppModel struct {
 	currentUser  string
 }
 
-func NewAppModel(client *gh.Client) AppModel {
-	return AppModel{
+func NewAppModel(client *gh.Client) *AppModel {
+	return &AppModel{
 		client:    client,
 		screen:    ScreenList,
 		pane:      PanePRs,
@@ -81,7 +81,7 @@ func NewAppModel(client *gh.Client) AppModel {
 	}
 }
 
-func (m AppModel) Init() tea.Cmd {
+func (m *AppModel) Init() tea.Cmd {
 	return m.loadMainPage()
 }
 
@@ -105,7 +105,7 @@ func (m *AppModel) setSizes() {
 	m.issueList.SetSize(m.width, botH)
 }
 
-func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -156,7 +156,8 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.statusMsg = "PR merged successfully!"
 			m.screen = ScreenList
-			return m, m.loadMainPage()
+			cmd := m.loadMainPage()
+			return m, cmd
 		}
 		return m, nil
 
@@ -170,13 +171,15 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case mergeConfirmedMsg:
 		if m.currentPR != nil {
-			return m, m.mergePR(m.currentPR.Number)
+			cmd := m.mergePR(m.currentPR.Number)
+			return m, cmd
 		}
 		return m, nil
 
 	case lgtmConfirmedMsg:
 		if m.currentPR != nil {
-			return m, m.approvePR(m.currentPR.Number)
+			cmd := m.approvePR(m.currentPR.Number)
+			return m, cmd
 		}
 		return m, nil
 
@@ -197,7 +200,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m AppModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+func (m *AppModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	switch m.screen {
 	case ScreenList:
 		topH := m.topPaneHeight()
@@ -236,7 +239,7 @@ func (m AppModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.screen {
 	case ScreenList:
 		switch msg.String() {
@@ -257,12 +260,13 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m.openSelectedIssue()
 		case "R":
 			m.list.loading = true
-			return m, m.loadMainPage()
+			cmd := m.loadMainPage()
+			return m, cmd
 		case "M":
 			if m.pane == PanePRs {
 				if pr := m.list.SelectedPR(); pr != nil {
 					model, cmd := m.openSelectedPR()
-					app := model.(AppModel)
+					app := model.(*AppModel)
 					app.detail.confirm = "merge"
 					return app, cmd
 				}
@@ -327,12 +331,12 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // openInBrowser opens the given path (e.g. "pull/42") in the GitHub repo.
-func (m AppModel) openInBrowser(path string) {
+func (m *AppModel) openInBrowser(path string) {
 	url := fmt.Sprintf("https://github.com/%s/%s/%s", m.client.Owner, m.client.Repo, path)
 	_ = exec.Command("open", url).Start()
 }
 
-func (m AppModel) openSelectedPR() (tea.Model, tea.Cmd) {
+func (m *AppModel) openSelectedPR() (tea.Model, tea.Cmd) {
 	pr := m.list.SelectedPR()
 	if pr == nil {
 		return m, nil
@@ -341,10 +345,11 @@ func (m AppModel) openSelectedPR() (tea.Model, tea.Cmd) {
 	m.screen = ScreenPRDetail
 	m.detail = PRDetailModel{currentUser: m.currentUser}
 	m.detail.SetSize(m.width, m.height)
-	return m, m.loadDetail(pr.Number)
+	cmd := m.loadDetail(pr.Number)
+	return m, cmd
 }
 
-func (m AppModel) openSelectedIssue() (tea.Model, tea.Cmd) {
+func (m *AppModel) openSelectedIssue() (tea.Model, tea.Cmd) {
 	issue := m.issueList.SelectedIssue()
 	if issue == nil {
 		return m, nil
@@ -353,10 +358,11 @@ func (m AppModel) openSelectedIssue() (tea.Model, tea.Cmd) {
 	m.screen = ScreenIssueDetail
 	m.issueDetail = IssueDetailModel{}
 	m.issueDetail.SetSize(m.width, m.height)
-	return m, m.loadIssueDetail(issue.Number)
+	cmd := m.loadIssueDetail(issue.Number)
+	return m, cmd
 }
 
-func (m AppModel) View() string {
+func (m *AppModel) View() string {
 	var view string
 	switch m.screen {
 	case ScreenList:
@@ -377,7 +383,7 @@ func (m AppModel) View() string {
 
 // Commands
 
-func (m AppModel) loadMainPage() tea.Cmd {
+func (m *AppModel) loadMainPage() tea.Cmd {
 	return func() tea.Msg {
 		result, err := m.client.ListMainPage(context.Background())
 		if err != nil {
@@ -387,7 +393,7 @@ func (m AppModel) loadMainPage() tea.Cmd {
 	}
 }
 
-func (m AppModel) loadDetail(number int) tea.Cmd {
+func (m *AppModel) loadDetail(number int) tea.Cmd {
 	return tea.Batch(
 		func() tea.Msg {
 			detail, err := m.client.GetPRDetail(context.Background(), number)
@@ -403,7 +409,7 @@ func (m AppModel) loadDetail(number int) tea.Cmd {
 	)
 }
 
-func (m AppModel) loadIssueDetail(number int) tea.Cmd {
+func (m *AppModel) loadIssueDetail(number int) tea.Cmd {
 	return func() tea.Msg {
 		issue, comments, err := m.client.IssueDetail(context.Background(), number)
 		if err != nil {
@@ -413,13 +419,13 @@ func (m AppModel) loadIssueDetail(number int) tea.Cmd {
 	}
 }
 
-func (m AppModel) mergePR(number int) tea.Cmd {
+func (m *AppModel) mergePR(number int) tea.Cmd {
 	return func() tea.Msg {
 		return mergeResultMsg{err: m.client.MergePR(context.Background(), number)}
 	}
 }
 
-func (m AppModel) approvePR(number int) tea.Cmd {
+func (m *AppModel) approvePR(number int) tea.Cmd {
 	return func() tea.Msg {
 		return lgtmResultMsg{err: m.client.ApprovePR(context.Background(), number)}
 	}

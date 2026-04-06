@@ -35,7 +35,7 @@ func (c *Client) IssueDetail(ctx context.Context, number int) (*Issue, []IssueCo
 				State     string    `json:"state"`
 				Body      string    `json:"body"`
 				UpdatedAt time.Time `json:"updatedAt"`
-				Labels struct {
+				Labels    struct {
 					Nodes []labelNode `json:"nodes"`
 				} `json:"labels"`
 				Comments struct {

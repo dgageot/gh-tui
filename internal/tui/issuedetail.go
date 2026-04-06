@@ -14,12 +14,12 @@ type issueClickedMsg struct{}
 
 // IssueDetailModel is the issue detail screen.
 type IssueDetailModel struct {
-	issue          *gh.Issue
-	comments       []gh.IssueComment
-	viewport       viewport.Model
-	err    error
-	width  int
-	height int
+	issue    *gh.Issue
+	comments []gh.IssueComment
+	viewport viewport.Model
+	err      error
+	width    int
+	height   int
 }
 
 func (m *IssueDetailModel) Update(msg tea.Msg) (IssueDetailModel, tea.Cmd) {

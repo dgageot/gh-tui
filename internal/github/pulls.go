@@ -73,7 +73,7 @@ func (c *Client) ListMainPage(ctx context.Context) (*MainPageResult, error) {
 					State     string    `json:"state"`
 					Body      string    `json:"body"`
 					UpdatedAt time.Time `json:"updatedAt"`
-					Labels struct {
+					Labels    struct {
 						Nodes []labelNode `json:"nodes"`
 					} `json:"labels"`
 					Comments struct {
@@ -325,8 +325,8 @@ func (c *Client) preferredMergeMethod(ctx context.Context) (string, error) {
 // ApprovePR submits an approving review with "LGTM" body.
 func (c *Client) ApprovePR(ctx context.Context, number int) error {
 	_, _, err := c.inner.PullRequests.CreateReview(ctx, c.Owner, c.Repo, number, &gh.PullRequestReviewRequest{
-		Body:  gh.Ptr("LGTM"),
-		Event: gh.Ptr("APPROVE"),
+		Body:  new("LGTM"),
+		Event: new("APPROVE"),
 	})
 	return err
 }
@@ -342,7 +342,7 @@ type gqlPR struct {
 	UpdatedAt      time.Time `json:"updatedAt"`
 	HeadRefName    string    `json:"headRefName"`
 	ReviewDecision string    `json:"reviewDecision"`
-	Labels struct {
+	Labels         struct {
 		Nodes []labelNode `json:"nodes"`
 	} `json:"labels"`
 }
