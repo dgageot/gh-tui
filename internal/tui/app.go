@@ -201,32 +201,28 @@ func (m AppModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	switch m.screen {
 	case ScreenList:
 		topH := m.topPaneHeight()
-		if msg.Y < topH {
-			if m.pane != PanePRs {
-				m.pane = PanePRs
-				m.updateFocus()
-			}
+		if msg.Y == topH {
+			return m, nil // separator line
+		}
+
+		targetPane := PanePRs
+		if msg.Y > topH {
+			targetPane = PaneIssues
+			msg.Y -= topH + 1
+		}
+
+		if m.pane != targetPane {
+			m.pane = targetPane
+			m.updateFocus()
+		}
+
+		if targetPane == PanePRs {
 			var cmd tea.Cmd
 			m.list, cmd = m.list.Update(msg)
 			return m, cmd
 		}
-		if msg.Y == topH {
-			// Separator line — ignore
-			return m, nil
-		}
-		// Adjust Y for the issue list
-		adjusted := tea.MouseMsg{
-			X:      msg.X,
-			Y:      msg.Y - topH - 1,
-			Action: msg.Action,
-			Button: msg.Button,
-		}
-		if m.pane != PaneIssues {
-			m.pane = PaneIssues
-			m.updateFocus()
-		}
 		var cmd tea.Cmd
-		m.issueList, cmd = m.issueList.Update(adjusted)
+		m.issueList, cmd = m.issueList.Update(msg)
 		return m, cmd
 	case ScreenPRDetail:
 		var cmd tea.Cmd
