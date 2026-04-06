@@ -255,18 +255,9 @@ func (m *PRListModel) filteredPRs() []gh.PR {
 
 // SelectedPR returns the currently selected PR, if any.
 func (m *PRListModel) SelectedPR() *gh.PR {
-	row := m.table.SelectedRow()
-	if row == nil {
-		return nil
-	}
-
-	var num int
-	_, _ = fmt.Sscanf(row[0], "#%d", &num)
-
-	for i := range m.prs {
-		if m.prs[i].Number == num {
-			return &m.prs[i]
-		}
+	filtered := m.filteredPRs()
+	if idx := m.table.Cursor(); idx >= 0 && idx < len(filtered) {
+		return &filtered[idx]
 	}
 	return nil
 }

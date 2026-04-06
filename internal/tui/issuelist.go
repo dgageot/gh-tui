@@ -111,18 +111,8 @@ func (m *IssueListModel) updateTableRows() {
 
 // SelectedIssue returns the currently selected issue, if any.
 func (m *IssueListModel) SelectedIssue() *gh.Issue {
-	row := m.table.SelectedRow()
-	if row == nil {
-		return nil
-	}
-
-	var num int
-	_, _ = fmt.Sscanf(row[0], "#%d", &num)
-
-	for i := range m.issues {
-		if m.issues[i].Number == num {
-			return &m.issues[i]
-		}
+	if idx := m.table.Cursor(); idx >= 0 && idx < len(m.issues) {
+		return &m.issues[idx]
 	}
 	return nil
 }
