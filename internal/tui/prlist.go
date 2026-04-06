@@ -35,18 +35,7 @@ type PRListModel struct {
 }
 
 func NewPRListModel() PRListModel {
-	columns := []table.Column{
-		{Title: "#", Width: 6},
-		{Title: "Title", Width: 40},
-		{Title: "Author", Width: 15},
-		{Title: "State", Width: 8},
-		{Title: "Review", Width: 10},
-		{Title: "Checks", Width: 10},
-		{Title: "Updated", Width: 12},
-	}
-
 	t := table.New(
-		table.WithColumns(columns),
 		table.WithFocused(true),
 	)
 

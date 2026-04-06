@@ -23,16 +23,7 @@ type IssueListModel struct {
 }
 
 func NewIssueListModel() IssueListModel {
-	columns := []table.Column{
-		{Title: "#", Width: 6},
-		{Title: "Title", Width: 40},
-		{Title: "Author", Width: 15},
-		{Title: "💬", Width: 3},
-		{Title: "Updated", Width: 12},
-	}
-
 	t := table.New(
-		table.WithColumns(columns),
 		table.WithFocused(false),
 	)
 
