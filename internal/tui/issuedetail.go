@@ -17,10 +17,9 @@ type IssueDetailModel struct {
 	issue          *gh.Issue
 	comments       []gh.IssueComment
 	viewport       viewport.Model
-	err            error
-	width          int
-	height         int
-	commentsLoaded bool
+	err    error
+	width  int
+	height int
 }
 
 func (m *IssueDetailModel) Update(msg tea.Msg) (IssueDetailModel, tea.Cmd) {
@@ -43,7 +42,6 @@ func (m *IssueDetailModel) SetIssue(issue *gh.Issue) {
 
 func (m *IssueDetailModel) SetComments(comments []gh.IssueComment) {
 	m.comments = comments
-	m.commentsLoaded = true
 	m.updateViewport()
 }
 
@@ -119,7 +117,7 @@ func (m *IssueDetailModel) renderContent() string {
 
 	// Comments
 	switch {
-	case m.commentsLoaded && len(m.comments) > 0:
+	case m.issue != nil && len(m.comments) > 0:
 		b.WriteString("\n")
 		b.WriteString(sectionTitleStyle.Render(fmt.Sprintf("  💬 Comments (%d)", len(m.comments))))
 		b.WriteString("\n")
@@ -136,12 +134,9 @@ func (m *IssueDetailModel) renderContent() string {
 			}
 			b.WriteString("\n")
 		}
-	case m.commentsLoaded:
-		b.WriteString("\n")
-		b.WriteString(bodyStyle.Render(dimTextStyle.Render("No comments yet.")))
 	default:
 		b.WriteString("\n")
-		b.WriteString(loadingStyle.Render("  Loading comments…"))
+		b.WriteString(bodyStyle.Render(dimTextStyle.Render("No comments yet.")))
 	}
 
 	return b.String()
