@@ -331,10 +331,6 @@ func (m *PRDetailModel) renderDiff() string {
 }
 
 func (m *PRDetailModel) renderTabContent() string {
-	if m.pr == nil {
-		return ""
-	}
-
 	switch m.tab {
 	case TabOverview:
 		return m.renderOverview()
