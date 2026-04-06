@@ -443,21 +443,17 @@ func (m *PRDetailModel) renderChecks() string {
 
 	b.WriteString("\n")
 	fmt.Fprintf(&b, "  %d checks: ", len(m.checks))
+	var parts []string
 	if pass > 0 {
-		b.WriteString(checkPassStyle.Render(fmt.Sprintf("%d passed", pass)))
+		parts = append(parts, checkPassStyle.Render(fmt.Sprintf("%d passed", pass)))
 	}
 	if fail > 0 {
-		if pass > 0 {
-			b.WriteString(dimTextStyle.Render(", "))
-		}
-		b.WriteString(checkFailStyle.Render(fmt.Sprintf("%d failed", fail)))
+		parts = append(parts, checkFailStyle.Render(fmt.Sprintf("%d failed", fail)))
 	}
 	if pending > 0 {
-		if pass > 0 || fail > 0 {
-			b.WriteString(dimTextStyle.Render(", "))
-		}
-		b.WriteString(checkPendStyle.Render(fmt.Sprintf("%d pending", pending)))
+		parts = append(parts, checkPendStyle.Render(fmt.Sprintf("%d pending", pending)))
 	}
+	b.WriteString(strings.Join(parts, dimTextStyle.Render(", ")))
 	b.WriteString("\n\n")
 
 	type styledCheck struct {
