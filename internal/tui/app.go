@@ -343,8 +343,7 @@ func (m AppModel) openSelectedPR() (tea.Model, tea.Cmd) {
 	}
 	m.currentPR = pr
 	m.screen = ScreenPRDetail
-	m.detail = PRDetailModel{}
-	m.detail.currentUser = m.currentUser
+	m.detail = PRDetailModel{currentUser: m.currentUser}
 	m.detail.SetSize(m.width, m.height)
 	return m, m.loadDetail(pr.Number)
 }
