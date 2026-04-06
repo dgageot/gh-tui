@@ -87,6 +87,10 @@ func (m *IssueDetailModel) View() string {
 }
 
 func (m *IssueDetailModel) renderContent() string {
+	if m.issue == nil {
+		return ""
+	}
+
 	var b strings.Builder
 
 	b.WriteString("\n")
